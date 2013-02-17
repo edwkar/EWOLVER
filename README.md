@@ -1,4 +1,5 @@
-it3708_ea
-=========
+ewolver
+=======
 
-Basic Evolutionary Algorithm framework. Coursework for "Subsymbolic Methods in AI" at NTNU.
+Basic Evolutionary Computing framework for Python 2. 
+Coursework for "Subsymbolic Methods in AI" at NTNU.
