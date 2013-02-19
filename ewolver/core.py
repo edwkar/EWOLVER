@@ -35,7 +35,15 @@ class DevelopmentMethod(object):
 
 
 class FitnessEvaluator(object):
-    def fitness_of(self, phenotype, all_phenotypes):
+    def fitness_many(self, all_phenotypes):
+        raise NotImplementedError
+
+
+class LocalFitnessEvaluator(FitnessEvaluator):
+    def fitness_many(self, all_phenotypes):
+        return map(self.fitness_one, all_phenotypes)
+
+    def fitness_one(self, phenotype):
         raise NotImplementedError
 
 
@@ -113,8 +121,9 @@ class ECProblem(object):
         return map(self._dev_method.develop_phenotype_from, genotypes)
 
     def _evaluate_phenotypes(self, phenotypes):
-        for p in phenotypes:
-            p.fitness = self._fitness_evaluator.fitness_of(p, phenotypes)
+        phenotypes_fitness = self._fitness_evaluator.fitness_many(phenotypes)
+        for p, f in zip(phenotypes, phenotypes_fitness):
+            p.fitness = f
 
     def _select_adults(self, phenotypes, child_gen):
         return self._adult_sel_strategy.select(phenotypes, child_gen,

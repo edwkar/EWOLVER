@@ -8,8 +8,8 @@ from ewolver.selection import *
 from ewolver.utils.logging import StdoutLogger
 
 
-class OneMaxFitnessEvaluator(FitnessEvaluator):
-    def fitness_of(self, phenotype, _):
+class OneMaxFitnessEvaluator(LocalFitnessEvaluator):
+    def fitness_one(self, phenotype):
         return sum(1 for v in phenotype.data if v)
 
 
