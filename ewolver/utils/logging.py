@@ -27,7 +27,7 @@ class StdoutLogger(Listener):
         adult_ptypes.sort(lambda a, b: -cmp(a.fitness, b.fitness))
         print
         for i, k in enumerate(adult_ptypes):
-            if i <= 5 or i >= len(adult_ptypes)-5:
+            if len(adult_ptypes) < 30 or i <= 5 or i >= len(adult_ptypes)-5:
                 print '      %-12s  %s  %-12s  %-12s' % (GREEN(i),
                         (str(k)[:100]), YELLOW(k.fitness),
                         GREEN(k.birth_generation),)

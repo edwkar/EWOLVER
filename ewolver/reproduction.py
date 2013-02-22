@@ -13,17 +13,14 @@ class ReproductionStrategy(object):
         assert len(parent_genotypes)%2 == 0
         res = []
         for i in range(0, len(parent_genotypes), 2):
-            left, right = parent_genotypes[i:i+2]
-            if rng.random() <= self._crossover_rate:
-                x = self._crossover_operator(left, right, child_gen, rng)
-            else:
-                x = rng.choice([left, right])
+            pa, pb = parent_genotypes[i:i+2]
+            a, b = self._crossover_operator(pa, pb, child_gen, rng)
 
-            if rng.random() <= self._mutation_rate:
-                x = self._mutation_operator(x, child_gen, rng)
-            if x == left or x == right:
-                x = x.child_copy(child_gen)
-            res.append(x)
+            a = self._mutation_operator(a, child_gen, rng)
+            b = self._mutation_operator(b, child_gen, rng)
+
+            res.append(a)
+            res.append(b)
         return res
 
 

@@ -1,23 +1,28 @@
-CC=gcc
-CFLAGS=-std=gnu99 -lm -O3 -Wall -Wextra
+CXX=clang++
+CXXFLAGS=-std=c++0x -O3 -Wall
+
+EMCC=emcc
+EMCCFLAGS=-O2 
+
+LD=ld
+LDFLAGS=
+
 TARGET=test_neurons
+SANDBOX_TARGET=sandbox/izhikevich.js
 
-$(TARGET): test_neurons.c
-	$(CC) $(CFLAGS) $< -o $@
 
-.PHONY: profile
-profile: test_neurons.c
-	$(CC) $(CFLAGS) -pg $< -o $j.prof
-	time ./$>.prof data/izzy-train1.dat 8960 waveform < \
-		data/profiling_test_data > /dev/null
-	gprof $>.prof gmon.out > prof.res
-	rm $>.prof 
+all: $(TARGET) $(SANDBOX_TARGET)
 
-.PHONY: indent
-indent: 
-	echo TODO TODO
+
+$(SANDBOX_TARGET): js_bindings.cc izhikevich.cc
+	$(EMCC) $(EMCCFLAGS) $^ -s EXPORTED_FUNCTIONS="['_izhikevichTest']"\
+			-o $@
+
+
+$(TARGET): test_neurons.cc izhikevich.cc
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
 
 .PHONY: clean
 clean: 
-	rm -f $(TARGET) gmon.out prof.res
-
+	rm -fr $(TARGET) $(SANDBOX_TARGET) *.o *.pyc __pycache__

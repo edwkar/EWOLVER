@@ -27,28 +27,44 @@ class RealVectorGenotype(Genotype):
 
 class RealVectorCrossoverOperator(CrossoverOperator):
     def __call__(self, first, second, child_gen, rng):
-        num_points = rng.randint(1, max(2, first.length//10))
-        points = set(rng.sample(range(first.length), num_points))
+        should_crossover = rng.random() <= 1
+        if not should_crossover:
+            return first.child_copy(child_gen), second.child_copy(child_gen)
+        else:
+            cut = rng.randint(0, len(first.data))
+            first_child_data = []
+            second_child_data = []
+            lala = []
+            for da, db in zip(first.data, second.data):
+                if rng.random() < .5:
+                    first_child_data.append(da)
+                    second_child_data.append(db)
+                else:
+                    first_child_data.append(db)
+                    second_child_data.append(da)
+                lala.append(rng.uniform(min(da, db), max(da, db)))
 
-        data = []
-        parent = rng.choice([first, second])
-        for k in range(first.length):
-            data.append(parent.data[k])
-            if k in points:
-                parent = first if parent == second else second
-
-        return RealVectorGenotype(child_gen, data)
+            return (
+                RealVectorGenotype(child_gen, lala),
+                RealVectorGenotype(child_gen, second_child_data),
+            )
 
 
 class RealVectorMutationOperator(MutationOperator):
     def __call__(self, genotype, child_gen, rng):
         mutated_data = genotype.data[:]
         for k in range(len(mutated_data)):
-            if rng.random() < 5e-3:
-                mutated_data[k] = not mutated_data[k]
+            if rng.random() < 0.05:
+                mutated_data[k] += rng.gauss(0, .05)
+                mutated_data[k] = max(0, min(1, mutated_data[k]))
         return RealVectorGenotype(child_gen, mutated_data)
 
 
 def unit_to_range(u, a, b):
+    assert b > a
     assert 0 <= u <= 1
-    return a + u*(b-a)
+    res = a + u*(b-a)
+    assert a-1e-6 < res and res < b+1e-6
+    res = max(a, min(res, b))
+    return res
+

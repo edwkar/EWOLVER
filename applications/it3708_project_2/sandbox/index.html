@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!-- vim: set ts=2 sw=2 tw=100: -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Izhikevich Sandbox</title>
+    <link rel="stylesheet" type="text/css"
+      href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.0/css/bootstrap.min.css" />
+    <style>
+      h1 { text-align: center; }
+      #plot {
+        width: 920px;
+        height: 400px;
+        margin-bottom: 30px;
+      }
+      input { width: 50px !important;  }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <h1>Izhikevich Sandbox</h1>
+      </div>
+      <div id="plot">
+      </div>
+
+      <div class="row">
+        <div class="span2 offset1">
+          <h4>Red neuron</h4>
+          <p>
+          a <input type="text" id="red_a" class="input-mini" value="0.03"> <br />
+          b <input type="text" id="red_b" class="input-mini" value="0.5"> <br />
+          c <input type="text" id="red_c" class="input-mini" value="-50"> <br />
+          d <input type="text" id="red_d" class="input-mini" value="3"> <br />
+          k <input type="text" id="red_k" class="input-mini" value="0.035"> <br />
+          <button id="copy_from_blue" >Copy from blue</button>
+          </p>
+        </div>
+        <div class="span2">
+          <h4>Blue neuron</h4>
+          <p>
+          a <input type="text" id="blue_a" class="input-mini" value="0.3"> <br />
+          b <input type="text" id="blue_b" class="input-mini" value="0.76"> <br />
+          c <input type="text" id="blue_c" class="input-mini" value="-40"> <br />
+          d <input type="text" id="blue_d" class="input-mini" value="12"> <br />
+          k <input type="text" id="blue_k" class="input-mini" value="0.03"> <br />
+          <button id="copy_from_red">Copy from red</button>
+          </p>
+        </div>
+        <div class="span5">
+          <h4>Analysis</h4>
+          <pre id="analysis">
+dsfsf
+sdfsf
+sdfsf
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+  <script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.0/js/bootstrap.min.js"></script>
+  <script src="jquery.flot.js"></script>
+  <script type="text/javascript" src="izhikevich.js"></script>
+  <script type="text/javascript" src="sandbox.js"></script>
+</html>
