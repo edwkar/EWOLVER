@@ -146,7 +146,7 @@ class DebugStepper(Listener):
 def main():
     genotype_factory = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
     dev_method = NeuronDevMethod()
-    fitness_evaluator = NeuronFitnessEvaluator('data/izzy-train3.dat',
+    fitness_evaluator = NeuronFitnessEvaluator('data/izzy-train1.dat',
                                                'spike-time')
 
     adult_sel_strategy = SelectionStrategy(
