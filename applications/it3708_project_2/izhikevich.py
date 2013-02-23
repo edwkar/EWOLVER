@@ -158,7 +158,7 @@ def main():
 
     parent_sel_strategy = SelectionStrategy(
        SelectAllSelectionProtocol(),
-       TournamentSelectionMechanism(k=5, p_lucky=0.2)
+       TournamentSelectionMechanism(k=3, p_lucky=0.2)
        #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.8))
     )
     parent_pop_size = 400

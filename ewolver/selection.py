@@ -67,9 +67,12 @@ class RankSelectionMechanism(SelectionMechanism):
         ranked_population = population[:]
         ranked_population.sort(lambda a, b: -cmp(a.fitness, b.fitness))
         assert ranked_population[0].fitness >= ranked_population[1].fitness
-        while True:
-            for p in ranked_population:
+        yielded = set()
+        for p in ranked_population:
+            if not str(p) in yielded:
                 yield p
+                yielded.add(str(p))
+        raise StopIteration
 
 
 class RouletteWheelSelectionMechanism(SelectionMechanism):
