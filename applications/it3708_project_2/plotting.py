@@ -26,7 +26,6 @@ def _start(ref_pot, ref_spike_times):
     pl.plot(range(len(ref_pot)), ref_pot, color='black')
 
     def plot_spikes(x, color):
-        print x
         pl.plot(range(len(ref_pot)),
                 [35 if t in x else 0 for t in range(len(ref_pot))],
                 color=color)
@@ -41,8 +40,9 @@ def _start(ref_pot, ref_spike_times):
             _new_data_lock.release()
             pl.gcf().clear()
             pl.plot(range(len(best_pot)), ref_pot, color='black')
-            plot_spikes(ref_spike_times, 'blue')
+            #plot_spikes(ref_spike_times, 'blue')
             pl.plot(range(len(best_pot)), best_pot, color='red')
+            #plot_spikes(best_st, 'red')
             pl.draw()
 
     t = threading.Thread(target=drawer)
@@ -56,6 +56,7 @@ class _Listener(Listener):
 
     def after_adult_sieving(self, adult_ptypes):
         best_p_type = max(adult_ptypes, key=lambda p: p.fitness)
+        print best_p_type.fitness, best_p_type.spike_times
         _new_data_lock.acquire()
         _new_data[0] = (best_p_type.potentials, best_p_type.spike_times,)
         _new_data_lock.notifyAll()

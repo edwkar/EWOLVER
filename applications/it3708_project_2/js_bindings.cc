@@ -7,17 +7,6 @@
 
 using namespace std;
 
-void print_usage_and_exit(const char *prog_name) {
-    printf("Usage: \n");
-    printf("  %s [ref spike train path] [# neurons to test] [diff metric], or\n",
-            prog_name);
-    printf("  %s --describe\n\n",
-            prog_name);
-    printf("Diff metric:\n");
-    printf("  spike-time | spike-interval | waveform\n");
-    exit(1);
-}
-
 template <typename T>
 static void write_js_array(const string& name, const vector<T>& xs) {
     stringstream ss;
@@ -29,9 +18,6 @@ static void write_js_array(const string& name, const vector<T>& xs) {
     emscripten_run_script(ss.str().c_str());
 }
 
-
-
-
 static bool hasInitialized = false;
 
 extern "C"
@@ -40,11 +26,7 @@ void izhikevichTest(
     float B_a, float B_b, float B_c, float B_d, float B_k
 ) {
     if (!hasInitialized) {
-        IzhikevichConfig config(1000,
-                                -60, 0,
-                                10.0, 10.0,
-                                30.0, 2.0);
-        izhikevich_setup(config);
+        izhikevich_useStandardConfig();
         hasInitialized = true;
     }
 
@@ -69,4 +51,3 @@ void izhikevichTest(
        << "';";
     emscripten_run_script(ss.str().c_str());
 };
-

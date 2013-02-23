@@ -4,19 +4,22 @@
 import random
 from subprocess import (Popen, PIPE)
 from ewolver.core import *
+from ewolver.binary import *
 from ewolver.real import *
 from ewolver.selection import *
 from ewolver.utils.logging import StdoutLogger
-import plotting
+try:
+    import plotting
+except:
+    pass
 
 
 PARAM_RANGES = {
-    'a': (0.001, 0.2),
-    #'a': (0.001, 0.01),
-    'b': (0.01, 0.3),
+    'a': (0.00001, 0.2),
+    'b': (0.00001, 0.3),
     'c': (-80, -30),
     'd': (0.1, 10),
-    'k': (0.01, 1.0),
+    'k': (0.01, 1)
 }
 """
 PARAM_RANGES = {
@@ -30,8 +33,6 @@ PARAM_RANGES = {
 PARAM_SEQ = ('a', 'b', 'c', 'd', 'k',)
 
 
-#self.repr_ = '0.02 0.2 -50 2 15'
-
 def _evaluator_communicate(args_str, input_):
     p = Popen('./test_neurons '+args_str, shell=True,
               stdin=PIPE, stdout=PIPE)
@@ -39,10 +40,11 @@ def _evaluator_communicate(args_str, input_):
     return out
 
 
-class NeuronFitnessEvaluator(LocalFitnessEvaluator):
+class NeuronFitnessEvaluator(FitnessEvaluator):
     def __init__(self, ref_file_path, diff_metric):
         self._ref_file_path = ref_file_path
         self._diff_metric = diff_metric
+        self._mins = []
         self.ref_potentials
 
     def fitness_many(self, phenotypes):
@@ -52,14 +54,8 @@ class NeuronFitnessEvaluator(LocalFitnessEvaluator):
         eval_output = _evaluator_communicate(eval_args, eval_input)
 
         fitness_list_max = map(float, eval_output.strip().split('\n'))
+        return [-f_raw for f_raw in fitness_list_max]
         return fitness_list_max
-        # TODO
-        worst_score = 1000
-        print worst_score, min(fitness_list_max)
-        raw_input()
-        fitness_list_min = [1000-f_raw
-                            for f_raw in fitness_list_max]
-        return fitness_list_min
 
     @property
     def ref_potentials(self):
@@ -75,7 +71,7 @@ class NeuronFitnessEvaluator(LocalFitnessEvaluator):
         if hasattr(self, '_ref_potentials'):
             return
 
-        descr_raw = _evaluator_communicate('--describe-file ' +
+        descr_raw = _evaluator_communicate('--describe ' +
                                            self._ref_file_path, '')
         pot_raw, st_raw = [s.strip().split(' ')
                            for s in descr_raw.split('\n')[:2]]
@@ -84,7 +80,6 @@ class NeuronFitnessEvaluator(LocalFitnessEvaluator):
         if st_raw != ['']:
             self._ref_spike_times = map(int, st_raw)
 
-import random
 
 class Neuron(Phenotype):
     def __init__(self, genotype, params):
@@ -92,13 +87,8 @@ class Neuron(Phenotype):
         assert set(params.keys()) == set(PARAM_SEQ)
         for pn in PARAM_SEQ:
             assert PARAM_RANGES[pn][0] <= params[pn] <= PARAM_RANGES[pn][1]
-        #for pn in PARAM_SEQ:
-        #    params[pn] = random.uniform(*PARAM_RANGES[pn])
         self.params = params
-        self.repr_ = ' '.join('%.8f' % self.params[pn] for pn in PARAM_SEQ)
-        #if random.random() < .1:
-        #    self.repr_ = '0.0658183917933 0.0752088754427 -58.6540876913 9.22560276186 0.0452787844016'
-        #self.repr_ = '0.02 0.2 -50 2 15'
+        self.repr_ = ' '.join('%.12e' % self.params[pn] for pn in PARAM_SEQ)
 
     @property
     def potentials(self):
@@ -122,16 +112,16 @@ class Neuron(Phenotype):
         if st_raw != ['']:
             self._spike_times = map(int, st_raw)
 
-    def is_useful(self):
-        mean_pot = sum(self.potentials)/len(self.potentials)
-        return (mean_pot < 5 and max(self.potentials) >= 35
-                and 10 < len(self.spike_times) < 40)
-
     def __str__(self):
-        ps = ' '.join('%s=%.2f' % (pn, self.params[pn],)
+        ps = ' '.join('%s=%.9e' % (pn, self.params[pn],)
                       for pn in PARAM_SEQ)
-        return '%s - %d' % (ps, len(self.spike_times),)
+        if self.fitness > -2:
+            return '%s - %d' % (ps, len(self.spike_times),)
+        else:
+            return ps
 
+
+BITS_PER_GENE = 8
 
 class NeuronDevMethod(DevelopmentMethod):
     @staticmethod
@@ -148,52 +138,40 @@ class NeuronDevMethod(DevelopmentMethod):
 
 class DebugStepper(Listener):
     def after_reproduction(self, _):
-        raw_input()
-
-
-backend_fac = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
-def xcreate(birth_generation, rng):
-    k = 0
-    while True:
-        gt = backend_fac(birth_generation, rng)
-        pt = NeuronDevMethod.develop_phenotype_from(gt)
-        #if rng.random() < .2 or pt.is_useful():
-        if pt.is_useful():
-            return gt
-        print k
-        k += 1
+        import time
+        time.sleep(.1)
+        #raw_input()
 
 
 def main():
-    genotype_factory = xcreate
+    genotype_factory = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
     dev_method = NeuronDevMethod()
     fitness_evaluator = NeuronFitnessEvaluator('data/izzy-train3.dat',
                                                'spike-time')
 
     adult_sel_strategy = SelectionStrategy(
-        SelectChildrenSelectionProtocol(),
-        RankSelectionMechanism()
+        SelectAllSelectionProtocol(),
+        RankSelectionMechanism() #XXX
         #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.5))
     )
-    adult_pop_size = 80
+    adult_pop_size = 400
 
     parent_sel_strategy = SelectionStrategy(
        SelectAllSelectionProtocol(),
-       #TournamentSelectionMechanism(k=3, p_lucky=0.5)
-       RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.5))
+       TournamentSelectionMechanism(k=5, p_lucky=0.2)
+       #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.8))
     )
-    parent_pop_size = 80
+    parent_pop_size = 400
 
     reproduction_strategy = ReproductionStrategy(
         0.9, RealVectorCrossoverOperator(),
         0.1, RealVectorMutationOperator()
     )
 
-    initial_pop_size = 80
-    generation_cnt = 1000
+    initial_pop_size = 2000
+    generation_cnt = 300
 
-    #listeners = [StdoutLogger(), DebugStepper()]
-    listeners = [StdoutLogger(), plotting.setup_live_plotting_listener(
+    listeners = [DebugStepper(), StdoutLogger(), plotting.setup_live_plotting_listener(
         fitness_evaluator.ref_potentials,
         fitness_evaluator.ref_spike_times)]
     rng = random.Random()

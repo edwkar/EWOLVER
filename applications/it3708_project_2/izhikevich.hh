@@ -4,19 +4,19 @@
 #include <string>
 #include <vector>
 
-typedef std::vector<float> v_pot_t;
+typedef std::vector<double> v_pot_t;
 typedef std::vector<int> v_st_t;
 
 class Neuron {
 public:
     const bool hasUnknownParams;
-    const float a, b, c, d, k;
+    const double a, b, c, d, k;
 private:
     const v_pot_t _potentials;
     const v_st_t _spikeTimes;
 
 public:
-    Neuron(float a, float b, float c, float d, float k) 
+    Neuron(double a, double b, double c, double d, double k) 
         : hasUnknownParams(false), a(a), b(b), c(c), d(d), k(k),
           _potentials(potsFromParams(a, b, c, d, k)),
           _spikeTimes(spikeTimesFromPots(_potentials)) {}
@@ -34,7 +34,7 @@ public:
 
     static Neuron readNext();
 
-    static v_pot_t potsFromParams(float, float, float, float, float);
+    static v_pot_t potsFromParams(double, double, double, double, double);
     static v_pot_t potsFromFile(const std::string&);
     static v_st_t spikeTimesFromPots(const v_pot_t&);
 };
@@ -42,10 +42,10 @@ public:
 
 struct IzhikevichConfig {
     int timespan;
-    float v_0, u_0,
+    double v_0, u_0,
           T, I, actThreshold, p;
-    IzhikevichConfig(int timespan, float v_0, float u_0, float T, float I,
-                     float actThreshold, float p) 
+    IzhikevichConfig(int timespan, double v_0, double u_0, double T, double I,
+                     double actThreshold, double p) 
         : timespan(timespan), v_0(v_0), u_0(u_0), T(T), I(I),
           actThreshold(actThreshold), p(p) {}
     IzhikevichConfig() {}
@@ -53,25 +53,26 @@ struct IzhikevichConfig {
 
 class DiffMetric {
 public:
-    virtual float operator()(const Neuron&, const Neuron&) const = 0;
+    virtual double operator()(const Neuron&, const Neuron&) const = 0;
 };
 
 class DiffMetricSpikeTimes : public DiffMetric {
 public:
-    float operator()(const Neuron&, const Neuron&) const;
+    double operator()(const Neuron&, const Neuron&) const;
 };
 
-class DiffMetricSpikeDistance : public DiffMetric {
+class DiffMetricSpikeIntervals : public DiffMetric {
 public:
-    float operator()(const Neuron&, const Neuron&) const;
+    double operator()(const Neuron&, const Neuron&) const;
 };
 
 class DiffMetricWaveform : public DiffMetric {
 public:
-    float operator()(const Neuron&, const Neuron&) const;
+    double operator()(const Neuron&, const Neuron&) const;
 };
 
 void izhikevich_setup(IzhikevichConfig config);
+void izhikevich_useStandardConfig();
 extern const IzhikevichConfig * const Config;
 
 #endif

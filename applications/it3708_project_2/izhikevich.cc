@@ -18,6 +18,14 @@ void izhikevich_setup(IzhikevichConfig Config) {
     __isConfigured = true;
 }
 
+void izhikevich_useStandardConfig() {
+    IzhikevichConfig config(1000,
+                            -60, 0,
+                            10.0, 10.0,
+                            35.0, 2.0);
+    izhikevich_setup(config);
+}
+
 static void ensure_initialized() {
     if (!__isConfigured)
         throw logic_error("time span has not been set");
@@ -26,24 +34,24 @@ static void ensure_initialized() {
 Neuron Neuron::readNext() {
     ensure_initialized();
 
-    float a, b, c, d, k;
-    if (scanf("%f %f %f %f %f", &a, &b, &c, &d, &k) != 5)
+    double a, b, c, d, k;
+    if (scanf("%lf %lf %lf %lf %lf", &a, &b, &c, &d, &k) != 5)
         throw runtime_error("Neuron::readNext(), scanf failed");
     return Neuron(a, b, c, d, k);
 }
 
-v_pot_t Neuron::potsFromParams(float a, float b, float c, float d, float k) {
+v_pot_t Neuron::potsFromParams(double a, double b, double c, double d, double k) {
     ensure_initialized();
 
     v_pot_t res;
     res.reserve(Config->timespan);
 
-    float v = Config->v_0;
-    float u = Config->u_0;
+    double v = Config->v_0;
+    double u = Config->u_0;
 
-    for (int i = 0; i < Config->timespan; ++i) {
-        float dv = 1.0/Config->T * (k*v*v + 5*v + 140 - u + Config->I);
-        float du = a/Config->T * (b*v - u);
+    for (int i = 0; i <= Config->timespan; ++i) {
+        double dv = 1.0/Config->T * (k*v*v + 5*v + 140 - u + Config->I);
+        double du = a/Config->T * (b*v - u);
         v += dv;
         u += du;
         res.push_back(min(Config->actThreshold, v));
@@ -65,9 +73,9 @@ v_pot_t Neuron::potsFromFile(const string& path) {
     FILE *f;
     if ((f = fopen(path.c_str(), "r")) == NULL)
         throw runtime_error("fopen");
-    for (int num_read = 0; num_read < Config->timespan; ++num_read) {
-        float v;
-        if (fscanf(f, "%f", &v) != 1)
+    for (int num_read = 0; num_read <= Config->timespan; ++num_read) {
+        double v;
+        if (fscanf(f, "%lf", &v) != 1)
             throw runtime_error("potentials_from_file, fscanf");
         res.push_back(v);
     }
@@ -90,7 +98,13 @@ v_st_t Neuron::spikeTimesFromPots(const v_pot_t &pot) {
     return res;
 }
 
-float DiffMetricSpikeTimes::operator()(const Neuron& a, const Neuron& b)
+static double spikeCountPenalty(const Neuron& a, const Neuron& b) {
+    int na = a.spikeTimes().size(),
+        nb = b.spikeTimes().size();
+    return (max(na, nb) - min(na, nb))*(pow(500, 2.5));
+}
+
+double DiffMetricSpikeTimes::operator()(const Neuron& a, const Neuron& b)
 const {
     ensure_initialized();
 
@@ -99,20 +113,41 @@ const {
 
     int n = min(stA.size(), stB.size());
 
-    float accum = 0;
+    double accum = 0;
     for (int i = 0; i < n; ++i)
-        accum += abs(pow(stA[i]-stB[i], Config->p));
+        accum += pow(abs(stA[i]-stB[i]), 2); // Config->p));
 
-    return (pow(accum, 1.0/Config->p)) / n;
+    double penalty = 0;
+    if (abs(stA.size()-stB.size()) != 0) {
+        penalty = 20*(100.0)*(abs(stA.size()-stB.size()));
+    }
+
+    return accum / max(1, n) + penalty;
 }
-
-float DiffMetricWaveform::operator()(const Neuron& a, const Neuron& b)
+double DiffMetricSpikeIntervals::operator()(const Neuron& a, const Neuron& b)
 const {
     ensure_initialized();
 
-    float accum = 0;
+    auto stA = a.spikeTimes(),
+         stB = b.spikeTimes();
+
+    int n = min(stA.size(), stB.size());
+
+    double accum = 0;
+    for (int i = 0; i < n; ++i)
+        accum += abs(pow(stA[i]-stB[i], Config->p));
+
+    return pow(accum, 1.0/Config->p) / n;
+}
+
+double DiffMetricWaveform::operator()(const Neuron& a, const Neuron& b)
+const {
+    ensure_initialized();
+
+    double accum = 0;
     for (int i = 0; i < Config->timespan; ++i)
         accum += abs(pow(a[i]-b[i], Config->p));
 
-    return (pow(accum, 1.0/Config->p)) / Config->timespan;
+    return accum / Config->timespan;
+    //return (pow(accum, 1.0/Config->p)) / Config->timespan;
 }

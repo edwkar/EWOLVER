@@ -22,7 +22,7 @@ var izhikevichTest = (function(){
   };
 })();
 
-var neuronNames = ['red', 'blue'];
+var neuronNames = ['orange', 'green'];
 var paramNames = ['a', 'b', 'c', 'd', 'k'];
 
 var fetchData = function(){
@@ -53,9 +53,9 @@ var plot = $.plot("#plot", fetchData().plots, {
   series: { shadowSize: 0 },
   yaxis: { min: -100, max: 100 },
   xaxis: { show: false },
-  colors: ['#ff5555', '#5555ff'],
+  colors: ['#ff5555', '#55ff55'],
   grid: {
-    backgroundColor: '#fefefe'
+    backgroundColor: '#222222'
   }
 });
 
@@ -96,8 +96,8 @@ var copyParams = function(a, b) {
   lastInputTime = Date.now();
 };
 
-$('#copy_from_blue').click(function(){ copyParams('red', 'blue'); });
-$('#copy_from_red').click(function(){ copyParams('blue', 'red'); });
+$('#copy_from_green').click(function(){ copyParams('orange', 'green'); });
+$('#copy_from_orange').click(function(){ copyParams('green', 'orange'); });
 
 $(document).keyup(function() { lastInputTime = Date.now(); });
 
