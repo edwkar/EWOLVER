@@ -10,7 +10,7 @@ class StdoutLogger(Listener):
         self._last_child_gen = 0
 
     def after_evaluation(self, genotypes, phenotypes):
-        os.system('clear')
+        #os.system('clear')
         print 'The population has %s members.' % YELLOW(len(genotypes))
 
     def after_adult_sieving(self, adult_ptypes):
@@ -27,7 +27,7 @@ class StdoutLogger(Listener):
         adult_ptypes.sort(lambda a, b: -cmp(a.fitness, b.fitness))
         print
         for i, k in enumerate(adult_ptypes):
-            if len(adult_ptypes) < 30 or i <= 5 or i >= len(adult_ptypes)-5:
+            if len(adult_ptypes) < 30 or i <= 25 or i >= len(adult_ptypes)-5:
                 print '      %-12s  %s  %-12s  %-12s' % (GREEN(i),
                         (str(k)[:100]), YELLOW(k.fitness),
                         GREEN(k.birth_generation),)

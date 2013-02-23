@@ -39,23 +39,26 @@ class IdentityBitVectorDevelopmentMethod(DevelopmentMethod):
 
 class BitVectorCrossoverOperator(CrossoverOperator):
     def __call__(self, first, second, child_gen, rng):
-        num_points = rng.randint(1, max(2, first.length//10))
-        points = set(rng.sample(range(first.length), num_points))
+        left_data = []
+        right_data = []
 
-        data = []
-        parent = rng.choice([first, second])
-        for k in range(first.length):
-            data.append(parent.data[k])
-            if k in points:
-                parent = first if parent == second else second
-
-        return BitVectorGenotype(child_gen, data)
+        if rng.random() <= .1:
+            left_data = first.data[:]
+            right_data = second.data[:]
+        else:
+            k = rng.randint(1, len(first.data)-1)
+            left_data = first.data[:k] + second.data[k:]
+            right_data = second.data[:k] + first.data[k:]
+        return [
+            BitVectorGenotype(child_gen, left_data),
+            BitVectorGenotype(child_gen, right_data)
+        ]
 
 
 class BitVectorMutationOperator(MutationOperator):
     def __call__(self, genotype, child_gen, rng):
         mutated_data = genotype.data[:]
         for k in range(len(mutated_data)):
-            if rng.random() < 5e-3:
+            if rng.random() < 0.05:
                 mutated_data[k] = not mutated_data[k]
         return BitVectorGenotype(child_gen, mutated_data)

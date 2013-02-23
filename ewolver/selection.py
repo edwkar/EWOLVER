@@ -26,7 +26,7 @@ class SelectionStrategy(object):
         for_selection = self._sel_protocol.select(population, child_gen)
         selection_iterator = self._sel_mechanism.new_iterator(for_selection, rng)
         selected = list(itertools.islice(selection_iterator, number))
-        assert len(selected) == number
+        # TODO XXX assert len(selected) == number
         return selected
 
 
@@ -63,16 +63,17 @@ class SelectionMechanism(object):
 
 
 class RankSelectionMechanism(SelectionMechanism):
-    def new_iterator(self, population, _):
+    def new_iterator(self, population, rng):
         ranked_population = population[:]
         ranked_population.sort(lambda a, b: -cmp(a.fitness, b.fitness))
         assert ranked_population[0].fitness >= ranked_population[1].fitness
-        yielded = set()
-        for p in ranked_population:
-            if not str(p) in yielded:
-                yield p
-                yielded.add(str(p))
-        raise StopIteration
+        emitted = set()
+        while True:
+            for p in ranked_population:
+                if not str(p) in emitted:
+                    yield p
+                    emitted.add(str(p))
+            raise StopIteration
 
 
 class RouletteWheelSelectionMechanism(SelectionMechanism):

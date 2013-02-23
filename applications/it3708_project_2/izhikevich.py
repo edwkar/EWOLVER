@@ -115,10 +115,7 @@ class Neuron(Phenotype):
     def __str__(self):
         ps = ' '.join('%s=%.9e' % (pn, self.params[pn],)
                       for pn in PARAM_SEQ)
-        if self.fitness > -2:
-            return '%s - %d' % (ps, len(self.spike_times),)
-        else:
-            return ps
+        return ps
 
 
 BITS_PER_GENE = 8
@@ -143,8 +140,17 @@ class DebugStepper(Listener):
         #raw_input()
 
 
+def create(birth_generation, rng):
+    print 'yo'
+    fac = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
+    while True:
+        x = fac(birth_generation, rng)
+        if 1 < len(NeuronDevMethod().develop_phenotype_from(x).spike_times) < 250:
+            return x
+
+POP_SIZE = 160
 def main():
-    genotype_factory = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
+    genotype_factory = create
     dev_method = NeuronDevMethod()
     fitness_evaluator = NeuronFitnessEvaluator('data/izzy-train1.dat',
                                                'spike-time')
@@ -154,22 +160,22 @@ def main():
         RankSelectionMechanism() #XXX
         #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.5))
     )
-    adult_pop_size = 400
+    adult_pop_size = POP_SIZE
 
     parent_sel_strategy = SelectionStrategy(
        SelectAllSelectionProtocol(),
        TournamentSelectionMechanism(k=3, p_lucky=0.2)
        #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.8))
     )
-    parent_pop_size = 400
+    parent_pop_size = POP_SIZE
 
     reproduction_strategy = ReproductionStrategy(
         0.9, RealVectorCrossoverOperator(),
         0.1, RealVectorMutationOperator()
     )
 
-    initial_pop_size = 2000
-    generation_cnt = 300
+    initial_pop_size = POP_SIZE
+    generation_cnt = 3000
 
     listeners = [DebugStepper(), StdoutLogger(), plotting.setup_live_plotting_listener(
         fitness_evaluator.ref_potentials,

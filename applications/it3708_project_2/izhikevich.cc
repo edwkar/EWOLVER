@@ -119,7 +119,7 @@ const {
 
     double penalty = 0;
     if (abs(stA.size()-stB.size()) != 0) {
-        penalty = 20*(100.0)*(abs(stA.size()-stB.size()));
+        penalty = 16*(100.0)*(abs(stA.size()-stB.size()));
     }
 
     return accum / max(1, n) + penalty;
