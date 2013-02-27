@@ -2,16 +2,15 @@
 
 
 import random
+import multiprocessing
 from subprocess import (Popen, PIPE)
 from ewolver.core import *
 from ewolver.binary import *
 from ewolver.real import *
 from ewolver.selection import *
 from ewolver.utils.logging import StdoutLogger
-try:
-    import plotting
-except:
-    pass
+from ewolver.utils.math_ import mean as _mean, stddev as _stddev
+import plotting
 
 
 PARAM_RANGES = {
@@ -118,16 +117,21 @@ class Neuron(Phenotype):
         return ps
 
 
-BITS_PER_GENE = 8
+BITS_PER_GENE = 10
 
 class NeuronDevMethod(DevelopmentMethod):
     @staticmethod
     def develop_phenotype_from(genotype):
-        assert len(genotype.data) == len(PARAM_SEQ)
+        assert len(genotype.data) == BITS_PER_GENE*len(PARAM_SEQ)
         params = {}
         for i, param_name in enumerate(PARAM_SEQ):
+            v = sum([2**k for k in range(BITS_PER_GENE)
+                    if genotype.data[i*BITS_PER_GENE+k]])
+            # Convert to gray coding (formula from WP, Gray_code)
+            v = (v >> 1) ^ v
+            v /= float(2**BITS_PER_GENE)
             param_range = PARAM_RANGES[param_name]
-            params[param_name] = unit_to_range(genotype.data[i],
+            params[param_name] = unit_to_range(v,
                                                param_range[0], param_range[1])
             assert param_range[0] <= params[param_name] <= param_range[1]
         return Neuron(genotype, params)
@@ -140,51 +144,111 @@ class DebugStepper(Listener):
         #raw_input()
 
 
-def create(birth_generation, rng):
+def old_create(birth_generation, rng):
     print 'yo'
     fac = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
     while True:
         x = fac(birth_generation, rng)
-        if 1 < len(NeuronDevMethod().develop_phenotype_from(x).spike_times) < 250:
+        return x
+        if 1 < len(NeuronDevMethod().develop_phenotype_from(x).spike_times) < 70:
             return x
 
-POP_SIZE = 160
-def main():
+def create(birth_generation, rng):
+    import os; os.system('clear')
+    print 'yo'
+    fac = BitVectorGenotype.factory_for_length(BITS_PER_GENE*len(PARAM_SEQ))
+    while True:
+        x = fac(birth_generation, rng)
+        return x
+
+        n = len(NeuronDevMethod().develop_phenotype_from(x).spike_times)
+        return x
+        print n
+        if 10 < len(NeuronDevMethod().develop_phenotype_from(x).spike_times) < 300:
+            return x
+        if rng.random() < .5:
+            return x
+
+def run_experiment(
+    _ref_file,
+    _diff_measure,
+    rng,
+    generation_cnt,
+    _pop_size,
+    _batch_mode=True
+):
     genotype_factory = create
     dev_method = NeuronDevMethod()
-    fitness_evaluator = NeuronFitnessEvaluator('data/izzy-train1.dat',
-                                               'spike-time')
+    fitness_evaluator = NeuronFitnessEvaluator(_ref_file, _diff_measure)
 
     adult_sel_strategy = SelectionStrategy(
         SelectAllSelectionProtocol(),
         RankSelectionMechanism() #XXX
-        #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.5))
     )
-    adult_pop_size = POP_SIZE
+    adult_pop_size = _pop_size
 
     parent_sel_strategy = SelectionStrategy(
        SelectAllSelectionProtocol(),
-       TournamentSelectionMechanism(k=3, p_lucky=0.2)
-       #RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.8))
+       #TournamentSelectionMechanism(k=5, p_lucky=0.2)
+       RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.5))
     )
-    parent_pop_size = POP_SIZE
+    parent_pop_size = 2*_pop_size
 
-    reproduction_strategy = ReproductionStrategy(
-        0.9, RealVectorCrossoverOperator(),
-        0.1, RealVectorMutationOperator()
+    reproduction_strategy = FixedReproductionStrategy(
+        0.6, BitVectorCrossoverOperator(),
+        0.05, BitVectorMutationOperator()
     )
 
-    initial_pop_size = POP_SIZE
-    generation_cnt = 3000
+    initial_pop_size = _pop_size
 
-    listeners = [DebugStepper(), StdoutLogger(), plotting.setup_live_plotting_listener(
-        fitness_evaluator.ref_potentials,
-        fitness_evaluator.ref_spike_times)]
-    rng = random.Random()
+    listeners = []
+    if not _batch_mode:
+        listeners += [DebugStepper(), StdoutLogger(),
+                                plotting.setup_live_plotting_listener(
+                                    fitness_evaluator.ref_potentials,
+                                    fitness_evaluator.ref_spike_times)]
 
-    problem = ECProblem(**locals())
-    problem.run()
+    problem = ECProblem(**{ k:v for k, v in locals().items() if not k[0]=='_'})
+    return problem.run()
+
+
+def _run_experiment_with_dict(dict_):
+    return run_experiment(**dict_)
 
 
 if __name__ == '__main__':
-    main()
+    multiprocessing.freeze_support()
+
+    seeder = random.Random(0x42)
+
+    all_res_str = ''
+
+    num_rounds_per_conf = 8
+    pool = multiprocessing.Pool(processes=num_rounds_per_conf)
+
+    #for ref_file_id in [1, 2, 3, 4]:
+    for ref_file_id in [1]:#, 2, 3, 4]:
+        ref_file = 'data/izzy-train%d.dat' % ref_file_id
+        for diff_measure in ['spike-time', 'spike-interval', 'waveform']:
+            #for crossover_rate in [0.6, 0.7, 0.8]:
+            for crossover_rate in [0.6]:#, 0.7, 0.8]:
+                for mutation_rate in [0.02, 0.03, 0.05, 0.1]:
+                    import time
+                    tpre = time.time()
+                    proc_inputs = [dict(
+                        _ref_file=ref_file,
+                        _diff_measure=diff_measure,
+                        rng=random.Random(seeder.randint(0, 0x81549300)),
+                        #generation_cnt=300,
+                        generation_cnt=300,
+                        #_pop_size=120,
+                        _pop_size=2,
+                    ) for _ in range(num_rounds_per_conf)]
+                    pool.map(_run_experiment_with_dict, proc_inputs)
+
+                    print time.time() - tpre
+
+    print len(all_res_str.split('\n'))
+    with open('res.txt', 'w') as f:
+        f.write(all_res_str)
+

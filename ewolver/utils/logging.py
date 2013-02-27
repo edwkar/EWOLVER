@@ -10,7 +10,7 @@ class StdoutLogger(Listener):
         self._last_child_gen = 0
 
     def after_evaluation(self, genotypes, phenotypes):
-        #os.system('clear')
+        os.system('clear')
         print 'The population has %s members.' % YELLOW(len(genotypes))
 
     def after_adult_sieving(self, adult_ptypes):

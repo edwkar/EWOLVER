@@ -1,5 +1,7 @@
-CXX=clang++
-CXXFLAGS=-std=c++0x -O3 -Wall
+#CXX=clang++
+#CXXFLAGS=-std=c++0x -O3 -Wall
+CXX=g++
+CXXFLAGS=-std=c++0x -O2 -Wall -march-native -fomit-frame-pointer
 
 EMCC=emcc
 EMCCFLAGS=-O2 

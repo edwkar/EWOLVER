@@ -67,12 +67,22 @@ class RankSelectionMechanism(SelectionMechanism):
         ranked_population = population[:]
         ranked_population.sort(lambda a, b: -cmp(a.fitness, b.fitness))
         assert ranked_population[0].fitness >= ranked_population[1].fitness
+        child_gen = max([p.birth_generation for p in population])
+        children = [p for p in ranked_population if p.birth_generation == child_gen]
+        adults = [p for p in ranked_population if p.birth_generation != child_gen]
+
         emitted = set()
+        W = 8
         while True:
-            for p in ranked_population:
-                if not str(p) in emitted:
+            if children and adults:
+                for x, y in zip(adults[:W], children[:W]):
+                    yield x
+                    yield y
+                for y in children[W:]:
+                    yield y
+            else:
+                for p in ranked_population:
                     yield p
-                    emitted.add(str(p))
             raise StopIteration
 
 

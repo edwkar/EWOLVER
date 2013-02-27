@@ -48,7 +48,6 @@ struct IzhikevichConfig {
                      double actThreshold, double p) 
         : timespan(timespan), v_0(v_0), u_0(u_0), T(T), I(I),
           actThreshold(actThreshold), p(p) {}
-    IzhikevichConfig() {}
 };
 
 class DiffMetric {
@@ -72,7 +71,5 @@ public:
 };
 
 void izhikevich_setup(IzhikevichConfig config);
-void izhikevich_useStandardConfig();
-extern const IzhikevichConfig * const Config;
 
 #endif

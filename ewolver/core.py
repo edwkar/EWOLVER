@@ -81,6 +81,7 @@ class ECProblem(object):
         best_fitness_seen = -1e60
         child_gen = 0
         for _ in range(self._generation_cnt):
+            print child_gen
             # Development and fitness evaluation.
             phenotypes = self._develop_phenotypes(genotypes)
             self._evaluate_phenotypes(phenotypes)
@@ -103,7 +104,8 @@ class ECProblem(object):
             lst.after_parent_sieving(parent_gtypes)
 
             # Reproduce.
-            child_gtypes = self._reproduce(parent_gtypes, child_gen)
+            child_gtypes = self._reproduce(parent_gtypes, parent_ptypes,
+                                           child_gen)
             lst.after_reproduction(child_gtypes)
 
             # Update the gene pool to include both adults and child genes.
@@ -136,9 +138,9 @@ class ECProblem(object):
     def _extract_genotypes(self, phenotypes):
         return [pt.genotype.reproduction_copy() for pt in phenotypes]
 
-    def _reproduce(self, parent_genotypes, child_gen):
+    def _reproduce(self, parent_genotypes, parent_phenotypes, child_gen):
         return self._reproduction_strategy.reproduce(parent_genotypes,
-                child_gen, self._rng)
+                parent_phenotypes, child_gen, self._rng)
 
 
 class Listener(object):

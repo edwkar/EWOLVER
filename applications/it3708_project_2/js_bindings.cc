@@ -18,18 +18,11 @@ static void write_js_array(const string& name, const vector<T>& xs) {
     emscripten_run_script(ss.str().c_str());
 }
 
-static bool hasInitialized = false;
-
 extern "C"
 void izhikevichTest(
     float A_a, float A_b, float A_c, float A_d, float A_k,
     float B_a, float B_b, float B_c, float B_d, float B_k
 ) {
-    if (!hasInitialized) {
-        izhikevich_useStandardConfig();
-        hasInitialized = true;
-    }
-
     Neuron A(A_a, A_b, A_c, A_d, A_k);
     Neuron B(B_a, B_b, B_c, B_d, B_k);
 

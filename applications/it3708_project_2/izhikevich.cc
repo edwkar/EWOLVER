@@ -7,33 +7,17 @@
 
 using namespace std;
 
-static bool __isConfigured = false;
-static IzhikevichConfig __Config;
-const IzhikevichConfig * const Config = &__Config;
+static IzhikevichConfig __config(1000,
+                                 -60, 0,
+                                 10.0, 10.0,
+                                 35.0, 2.0);
+const IzhikevichConfig * const Config = &__config;
 
-void izhikevich_setup(IzhikevichConfig Config) {
-    if (__isConfigured)
-        throw logic_error("already configured");
-    __Config = Config;
-    __isConfigured = true;
-}
-
-void izhikevich_useStandardConfig() {
-    IzhikevichConfig config(1000,
-                            -60, 0,
-                            10.0, 10.0,
-                            35.0, 2.0);
-    izhikevich_setup(config);
-}
-
-static void ensure_initialized() {
-    if (!__isConfigured)
-        throw logic_error("time span has not been set");
+void izhikevich_setup(IzhikevichConfig c) {
+    __config = c;
 }
 
 Neuron Neuron::readNext() {
-    ensure_initialized();
-
     double a, b, c, d, k;
     if (scanf("%lf %lf %lf %lf %lf", &a, &b, &c, &d, &k) != 5)
         throw runtime_error("Neuron::readNext(), scanf failed");
@@ -41,8 +25,6 @@ Neuron Neuron::readNext() {
 }
 
 v_pot_t Neuron::potsFromParams(double a, double b, double c, double d, double k) {
-    ensure_initialized();
-
     v_pot_t res;
     res.reserve(Config->timespan);
 
@@ -55,7 +37,8 @@ v_pot_t Neuron::potsFromParams(double a, double b, double c, double d, double k)
         v += dv;
         u += du;
         res.push_back(min(Config->actThreshold, v));
-        if (v >= Config->actThreshold) {
+        //res.push_back(v);
+        if (v > Config->actThreshold) {
             v = c;
             u = u+d;
         }
@@ -65,8 +48,6 @@ v_pot_t Neuron::potsFromParams(double a, double b, double c, double d, double k)
 }
 
 v_pot_t Neuron::potsFromFile(const string& path) {
-    ensure_initialized();
-
     v_pot_t res;
     res.reserve(Config->timespan);
 
@@ -88,62 +69,55 @@ v_pot_t Neuron::potsFromFile(const string& path) {
 }
 
 v_st_t Neuron::spikeTimesFromPots(const v_pot_t &pot) {
-    ensure_initialized();
-
     v_st_t res;
+
     for (int t = 0; t < Config->timespan; ++t)
         if (pot[t] >= Config->actThreshold)
             res.push_back(t);
-
     return res;
 }
 
 static double spikeCountPenalty(const Neuron& a, const Neuron& b) {
-    int na = a.spikeTimes().size(),
-        nb = b.spikeTimes().size();
-    return (max(na, nb) - min(na, nb))*(pow(500, 2.5));
+    int numA = a.spikeTimes().size(),
+        numB = b.spikeTimes().size(),
+        n = max(numA, numB),
+        m = min(numA, numB),
+        l = Config->timespan;
+    return (n-m)*l / max(1.0, 2.0*m);
 }
 
 double DiffMetricSpikeTimes::operator()(const Neuron& a, const Neuron& b)
 const {
-    ensure_initialized();
-
     auto stA = a.spikeTimes(),
          stB = b.spikeTimes();
 
-    int n = min(stA.size(), stB.size());
+    int m = min(stA.size(), stB.size());
 
     double accum = 0;
-    for (int i = 0; i < n; ++i)
-        accum += pow(abs(stA[i]-stB[i]), 2); // Config->p));
+    for (int i = 0; i < m; ++i)
+        accum += pow(abs(stA[i]-stB[i]), Config->p);
 
-    double penalty = 0;
-    if (abs(stA.size()-stB.size()) != 0) {
-        penalty = 16*(100.0)*(abs(stA.size()-stB.size()));
-    }
-
-    return accum / max(1, n) + penalty;
+    auto penalty = spikeCountPenalty(a, b);
+    return (penalty + pow(accum, 1.0/Config->p))/max(1, m);
 }
+
 double DiffMetricSpikeIntervals::operator()(const Neuron& a, const Neuron& b)
 const {
-    ensure_initialized();
-
     auto stA = a.spikeTimes(),
          stB = b.spikeTimes();
 
-    int n = min(stA.size(), stB.size());
+    int m = min(stA.size(), stB.size());
 
     double accum = 0;
-    for (int i = 0; i < n; ++i)
-        accum += abs(pow(stA[i]-stB[i], Config->p));
+    for (int i = 1; i < m; ++i)
+        accum += pow(abs((stA[i]-stA[i-1]) - (stB[i]-stB[i-1])), Config->p);
 
-    return pow(accum, 1.0/Config->p) / n;
+    auto penalty = spikeCountPenalty(a, b);
+    return (penalty + pow(accum, 1.0/Config->p))/max(1, m);
 }
 
 double DiffMetricWaveform::operator()(const Neuron& a, const Neuron& b)
 const {
-    ensure_initialized();
-
     double accum = 0;
     for (int i = 0; i < Config->timespan; ++i)
         accum += abs(pow(a[i]-b[i], Config->p));

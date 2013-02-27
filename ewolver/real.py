@@ -27,7 +27,7 @@ class RealVectorGenotype(Genotype):
 
 class RealVectorCrossoverOperator(CrossoverOperator):
     def __call__(self, first, second, child_gen, rng):
-        should_crossover = rng.random() <= 0.9
+        should_crossover = rng.random() <= 0.7
         if not should_crossover:
             return first.child_copy(child_gen), second.child_copy(child_gen)
         cut = rng.randint(1, len(first.data)-1)

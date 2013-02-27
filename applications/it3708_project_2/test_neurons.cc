@@ -33,8 +33,6 @@ int main(int argc, char *_argv[]) {
     for (int i = 0; i < argc; ++i)
         argv.push_back(string(_argv[i]));
 
-    izhikevich_useStandardConfig();
-
     if ((argc == 2 || argc == 3) && argv[1] == "--describe") {
         Neuron n = argc == 2 ? Neuron::readNext() : Neuron(argv[2]);
         describe(n);

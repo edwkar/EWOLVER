@@ -42,7 +42,7 @@ def _start(ref_pot, ref_spike_times):
             pl.plot(range(len(best_pot)), ref_pot, color='black')
             #plot_spikes(ref_spike_times, 'blue')
             pl.plot(range(len(best_pot)), best_pot, color='red')
-            #plot_spikes(best_st, 'red')
+            #plot_spikes(best_st, 'green')
             pl.draw()
 
     t = threading.Thread(target=drawer)
