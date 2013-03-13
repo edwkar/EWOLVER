@@ -4,31 +4,25 @@
 import random
 import multiprocessing
 from subprocess import (Popen, PIPE)
+from ewolver import selection
 from ewolver.core import *
 from ewolver.binary import *
 from ewolver.real import *
-from ewolver.selection import *
 from ewolver.utils.logging import StdoutLogger
 from ewolver.utils.math_ import mean as _mean, stddev as _stddev
-import plotting
+try:
+    import plotting
+except:
+    pass
 
 
 PARAM_RANGES = {
-    'a': (0.00001, 0.2),
-    'b': (0.00001, 0.3),
-    'c': (-80, -30),
-    'd': (0.1, 10),
-    'k': (0.01, 1)
+    'a': (0.001, 0.2),
+    'b': ( 0.01, 0.3),
+    'c': (  -80, -30),
+    'd': (  0.1,  10),
+    'k': ( 0.01, 1.0)
 }
-"""
-PARAM_RANGES = {
-    'a': (0.01, 0.04),
-    'b': (0.2, 0.3),
-    'c': (-50, -49),
-    'd': (2, 3),
-    'k': (0.01, 0.05),
-}
-"""
 PARAM_SEQ = ('a', 'b', 'c', 'd', 'k',)
 
 
@@ -54,7 +48,6 @@ class NeuronFitnessEvaluator(FitnessEvaluator):
 
         fitness_list_max = map(float, eval_output.strip().split('\n'))
         return [-f_raw for f_raw in fitness_list_max]
-        return fitness_list_max
 
     @property
     def ref_potentials(self):
@@ -117,7 +110,7 @@ class Neuron(Phenotype):
         return ps
 
 
-BITS_PER_GENE = 10
+BITS_PER_GENE = 12
 
 class NeuronDevMethod(DevelopmentMethod):
     @staticmethod
@@ -128,7 +121,7 @@ class NeuronDevMethod(DevelopmentMethod):
             v = sum([2**k for k in range(BITS_PER_GENE)
                     if genotype.data[i*BITS_PER_GENE+k]])
             # Convert to gray coding (formula from WP, Gray_code)
-            v = (v >> 1) ^ v
+            #v = (v >> 1) ^ v
             v /= float(2**BITS_PER_GENE)
             param_range = PARAM_RANGES[param_name]
             params[param_name] = unit_to_range(v,
@@ -136,77 +129,57 @@ class NeuronDevMethod(DevelopmentMethod):
             assert param_range[0] <= params[param_name] <= param_range[1]
         return Neuron(genotype, params)
 
+    @staticmethod
+    def ___develop_phenotype_from(genotype):
+        assert len(genotype.data) == len(PARAM_SEQ)
+        params = {}
+        for i, param_name in enumerate(PARAM_SEQ):
+            param_range = PARAM_RANGES[param_name]
+            params[param_name] = unit_to_range(genotype.data[i],
+                                               param_range[0], param_range[1])
+            assert param_range[0] <= params[param_name] <= param_range[1]
+        return Neuron(genotype, params)
 
-class DebugStepper(Listener):
-    def after_reproduction(self, _):
-        import time
-        time.sleep(.1)
-        #raw_input()
 
 
-def old_create(birth_generation, rng):
-    print 'yo'
-    fac = RealVectorGenotype.factory_for_length(len(PARAM_SEQ))
-    while True:
-        x = fac(birth_generation, rng)
-        return x
-        if 1 < len(NeuronDevMethod().develop_phenotype_from(x).spike_times) < 70:
-            return x
+seeder = random.Random(0x42)
 
-def create(birth_generation, rng):
-    import os; os.system('clear')
-    print 'yo'
-    fac = BitVectorGenotype.factory_for_length(BITS_PER_GENE*len(PARAM_SEQ))
-    while True:
-        x = fac(birth_generation, rng)
-        return x
 
-        n = len(NeuronDevMethod().develop_phenotype_from(x).spike_times)
-        return x
-        print n
-        if 10 < len(NeuronDevMethod().develop_phenotype_from(x).spike_times) < 300:
-            return x
-        if rng.random() < .5:
-            return x
+def run_experiment(_ref_file, _diff_measure, rng, num_generations,
+                   _adult_pop_size, _parent_pop_size, _crossover_rate,
+                   _mutation_rate, _batch_mode=True, _k=-1):
 
-def run_experiment(
-    _ref_file,
-    _diff_measure,
-    rng,
-    generation_cnt,
-    _pop_size,
-    _batch_mode=True
-):
-    genotype_factory = create
+    genotype_factory = BitVectorGenotype.factory_for_length(
+            BITS_PER_GENE*len(PARAM_SEQ))
+
     dev_method = NeuronDevMethod()
     fitness_evaluator = NeuronFitnessEvaluator(_ref_file, _diff_measure)
 
-    adult_sel_strategy = SelectionStrategy(
-        SelectAllSelectionProtocol(),
-        RankSelectionMechanism() #XXX
-    )
-    adult_pop_size = _pop_size
+    adult_sel_scheme = selection.SelectionScheme(
+            selection.UniqueFilter(),
+            selection.ElitismSieve(elite_size=10),
+            selection.Truncater(_adult_pop_size))
 
-    parent_sel_strategy = SelectionStrategy(
-       SelectAllSelectionProtocol(),
-       #TournamentSelectionMechanism(k=5, p_lucky=0.2)
-       RouletteWheelSelectionMechanism(new_rank_scaler(0.5, 1.5))
-    )
-    parent_pop_size = 2*_pop_size
+    parent_sel_scheme = selection.SelectionScheme(
+       selection.RouletteWheel(selection.RankScaler(0.5, 1.8),
+                               _parent_pop_size))
 
-    reproduction_strategy = FixedReproductionStrategy(
-        0.6, BitVectorCrossoverOperator(),
-        0.05, BitVectorMutationOperator()
+    reproduction_scheme = ReproductionScheme(
+        BitVectorCrossoverOperator(),
+        BitVectorMutationOperator(),
+        FixedRateController(_crossover_rate, _mutation_rate)
     )
 
-    initial_pop_size = _pop_size
+    initial_pop_size = 5*_adult_pop_size
 
     listeners = []
     if not _batch_mode:
-        listeners += [DebugStepper(), StdoutLogger(),
-                                plotting.setup_live_plotting_listener(
+        listeners += [# StdoutLogger(),
+                      plotting.setup_live_plotting_listener(
                                     fitness_evaluator.ref_potentials,
-                                    fitness_evaluator.ref_spike_times)]
+                                    fitness_evaluator.ref_spike_times,
+                                    '%s_%s_%d.png' % (_ref_file,
+                                        _diff_measure, k,))]
 
     problem = ECProblem(**{ k:v for k, v in locals().items() if not k[0]=='_'})
     return problem.run()
@@ -215,40 +188,46 @@ def run_experiment(
 def _run_experiment_with_dict(dict_):
     return run_experiment(**dict_)
 
+TO_SAVE = """
+data/izzy-train1.dat_spike-time_2.png
+data/izzy-train1.dat_spike-interval_3.png
+data/izzy-train1.dat_waveform_3.png
 
-if __name__ == '__main__':
-    multiprocessing.freeze_support()
+data/izzy-train2.dat_spike-time_1.png
+data/izzy-train2.dat_spike-interval_2.png
+data/izzy-train2.dat_waveform_4.png
 
-    seeder = random.Random(0x42)
+data/izzy-train3.dat_spike-time_2.png
+data/izzy-train3.dat_spike-interval_4.png
+data/izzy-train3.dat_waveform_3.png
 
-    all_res_str = ''
+data/izzy-train4.dat_spike-time_2.png
+data/izzy-train4.dat_spike-interval_4.png
+data/izzy-train4.dat_waveform_2.png
+"""
 
-    num_rounds_per_conf = 8
-    pool = multiprocessing.Pool(processes=num_rounds_per_conf)
 
-    #for ref_file_id in [1, 2, 3, 4]:
-    for ref_file_id in [1]:#, 2, 3, 4]:
-        ref_file = 'data/izzy-train%d.dat' % ref_file_id
-        for diff_measure in ['spike-time', 'spike-interval', 'waveform']:
-            #for crossover_rate in [0.6, 0.7, 0.8]:
-            for crossover_rate in [0.6]:#, 0.7, 0.8]:
-                for mutation_rate in [0.02, 0.03, 0.05, 0.1]:
-                    import time
-                    tpre = time.time()
-                    proc_inputs = [dict(
-                        _ref_file=ref_file,
-                        _diff_measure=diff_measure,
-                        rng=random.Random(seeder.randint(0, 0x81549300)),
-                        #generation_cnt=300,
-                        generation_cnt=300,
-                        #_pop_size=120,
-                        _pop_size=2,
-                    ) for _ in range(num_rounds_per_conf)]
-                    pool.map(_run_experiment_with_dict, proc_inputs)
+"""
+for ref_file in ['data/izzy-train1.dat',
+        'data/izzy-train2.dat', 'data/izzy-train3.dat',
+        'data/izzy-train4.dat']:
+    for diff_measure in ['spike-time', 'spike-interval', 'waveform']:
+        for k in range(5):
+            name = '%s_%s_%d.png' % (ref_file, diff_measure, k,)
+            rng = random.Random(seeder.randint(0, 80000))
+            if not name in TO_SAVE:
+                continue
+            run_experiment(
+                ref_file,
+                diff_measure,
+                rng,
+                num_generations=250,
+                _adult_pop_size=100,
+                _parent_pop_size=170,
+                _crossover_rate=0.6,
+                _mutation_rate=0.06,
+                _batch_mode=False,
+                _k=k
+            )
 
-                    print time.time() - tpre
-
-    print len(all_res_str.split('\n'))
-    with open('res.txt', 'w') as f:
-        f.write(all_res_str)
-
+"""

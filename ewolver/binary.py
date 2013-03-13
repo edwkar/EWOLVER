@@ -43,12 +43,18 @@ class BitVectorCrossoverOperator(CrossoverOperator):
         right_data = []
 
         if rng.random() < crossover_rate:
+            a = rng.randint(0, len(first.data))
+            b = None
+            while b is None or b == a:
+                b = rng.randint(0, len(first.data))
+            a, b = min(a, b), max(a, b)
+
+            left_data = first.data[:a] + second.data[a:b] + first.data[b:]
+            assert len(left_data) == len(first.data)
+            right_data = second.data[:a] + first.data[a:b] + second.data[b:]
+        else:
             left_data = first.data[:]
             right_data = second.data[:]
-        else:
-            k = rng.randint(0, len(first.data))
-            left_data = first.data[:k] + second.data[k:]
-            right_data = second.data[:k] + first.data[k:]
         return [
             BitVectorGenotype(child_gen, left_data),
             BitVectorGenotype(child_gen, right_data)
