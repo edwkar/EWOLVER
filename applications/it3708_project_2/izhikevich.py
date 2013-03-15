@@ -1,6 +1,3 @@
-# vim: ts=4:sw=4
-
-
 import random
 import multiprocessing
 from subprocess import (Popen, PIPE)
@@ -10,10 +7,11 @@ from ewolver.binary import *
 from ewolver.real import *
 from ewolver.utils.logging import StdoutLogger
 from ewolver.utils.math_ import mean as _mean, stddev as _stddev
-try:
-    import plotting
-except:
-    pass
+import plotting
+
+
+BITS_PER_GENE = 12
+SEEDER = random.Random(0x42)
 
 
 PARAM_RANGES = {
@@ -110,8 +108,6 @@ class Neuron(Phenotype):
         return ps
 
 
-BITS_PER_GENE = 12
-
 class NeuronDevMethod(DevelopmentMethod):
     @staticmethod
     def develop_phenotype_from(genotype):
@@ -120,8 +116,6 @@ class NeuronDevMethod(DevelopmentMethod):
         for i, param_name in enumerate(PARAM_SEQ):
             v = sum([2**k for k in range(BITS_PER_GENE)
                     if genotype.data[i*BITS_PER_GENE+k]])
-            # Convert to gray coding (formula from WP, Gray_code)
-            #v = (v >> 1) ^ v
             v /= float(2**BITS_PER_GENE)
             param_range = PARAM_RANGES[param_name]
             params[param_name] = unit_to_range(v,
@@ -142,15 +136,12 @@ class NeuronDevMethod(DevelopmentMethod):
 
 
 
-seeder = random.Random(0x42)
-
-
 def run_experiment(_ref_file, _diff_measure, rng, num_generations,
                    _adult_pop_size, _parent_pop_size, _crossover_rate,
-                   _mutation_rate, _batch_mode=True, _k=-1):
+                   _mutation_rate, _batch_mode=True, _round_num=-1):
 
     genotype_factory = BitVectorGenotype.factory_for_length(
-            BITS_PER_GENE*len(PARAM_SEQ))
+            BITS_PER_GENE * len(PARAM_SEQ))
 
     dev_method = NeuronDevMethod()
     fitness_evaluator = NeuronFitnessEvaluator(_ref_file, _diff_measure)
@@ -170,64 +161,17 @@ def run_experiment(_ref_file, _diff_measure, rng, num_generations,
         FixedRateController(_crossover_rate, _mutation_rate)
     )
 
-    initial_pop_size = 5*_adult_pop_size
+    initial_pop_size = 5 * _adult_pop_size
 
-    listeners = []
     if not _batch_mode:
-        listeners += [# StdoutLogger(),
-                      plotting.setup_live_plotting_listener(
-                                    fitness_evaluator.ref_potentials,
-                                    fitness_evaluator.ref_spike_times,
-                                    '%s_%s_%d.png' % (_ref_file,
-                                        _diff_measure, k,))]
+        listeners = [plotting.setup_live_plotting_listener(
+                             fitness_evaluator.ref_potentials,
+                             fitness_evaluator.ref_spike_times,
+                             '%s_%s_%d.png' % (_ref_file, _diff_measure,
+                                               _round_num,))]
+    else:
+        listeners = []
 
-    problem = ECProblem(**{ k:v for k, v in locals().items() if not k[0]=='_'})
+    problem = ECProblem(**{ k: v for k,v in locals().items() if not k[0]=='_'})
+
     return problem.run()
-
-
-def _run_experiment_with_dict(dict_):
-    return run_experiment(**dict_)
-
-TO_SAVE = """
-data/izzy-train1.dat_spike-time_2.png
-data/izzy-train1.dat_spike-interval_3.png
-data/izzy-train1.dat_waveform_3.png
-
-data/izzy-train2.dat_spike-time_1.png
-data/izzy-train2.dat_spike-interval_2.png
-data/izzy-train2.dat_waveform_4.png
-
-data/izzy-train3.dat_spike-time_2.png
-data/izzy-train3.dat_spike-interval_4.png
-data/izzy-train3.dat_waveform_3.png
-
-data/izzy-train4.dat_spike-time_2.png
-data/izzy-train4.dat_spike-interval_4.png
-data/izzy-train4.dat_waveform_2.png
-"""
-
-
-"""
-for ref_file in ['data/izzy-train1.dat',
-        'data/izzy-train2.dat', 'data/izzy-train3.dat',
-        'data/izzy-train4.dat']:
-    for diff_measure in ['spike-time', 'spike-interval', 'waveform']:
-        for k in range(5):
-            name = '%s_%s_%d.png' % (ref_file, diff_measure, k,)
-            rng = random.Random(seeder.randint(0, 80000))
-            if not name in TO_SAVE:
-                continue
-            run_experiment(
-                ref_file,
-                diff_measure,
-                rng,
-                num_generations=250,
-                _adult_pop_size=100,
-                _parent_pop_size=170,
-                _crossover_rate=0.6,
-                _mutation_rate=0.06,
-                _batch_mode=False,
-                _k=k
-            )
-
-"""

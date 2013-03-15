@@ -2,6 +2,7 @@ import math
 import time
 from izhikevich import *
 
+
 def dist(a, b):
     v = []
     for pn in PARAM_SEQ:

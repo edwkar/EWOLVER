@@ -1,0 +1,661 @@
+\documentclass[a4paper,9pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{colortbl}
+\usepackage{color}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{times}
+\usepackage{url}
+\usepackage{wasysym}
+%\usepackage[small,compact]{titlesec}
+%\usepackage[center]{caption}
+
+\DeclareMathOperator{\avg}{avg}
+
+\newcommand{\vvec}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand{\tightit}{\vspace{-5pt}}
+
+\newcommand{\casedata}[4]{
+    \begin{figure}[!h]
+        \centering
+        \begin{subfigure}{.5\textwidth}
+          \centering
+          \includegraphics[width=220pt]{#1}
+        \end{subfigure}%
+        \begin{subfigure}{.5\textwidth}
+          \centering
+          \includegraphics[width=220pt]{#2}
+        \end{subfigure}
+    \end{figure}
+
+    { \scriptsize
+    \begin{tabular}{c|c|c|c|c|c||c}
+    \textbf{\#} & \textbf{a} & \textbf{b} & \textbf{c} & 
+      \textbf{d} & \textbf{k} & \textbf{Fitness} \\ \hline
+      #3
+    \end{tabular} 
+    \textsc{~~~~~~diameter:} #4
+    \ \\
+    }
+}
+
+\newenvironment{tightquote}
+{ \vspace{-2pt} \begin{quote} }
+{ \end{quote} \vspace{-2pt} }
+
+\renewcommand\floatpagefraction{.9}
+\renewcommand\topfraction{.9}
+\renewcommand\bottomfraction{.9}
+\renewcommand\textfraction{.1}   
+\setcounter{totalnumber}{50}
+\setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50}
+
+
+\begin{document}
+
+{
+\centering
+\Large{IT3708 Assignment 2: Evolving Spiking Neurons}  \\
+\vspace{3pt}
+\small{Edvard K. Karlsen} \\
+}
+
+\vspace{-2pt}
+
+\section{Introduction}
+\tightit
+In this text I report on my results doing Assignment 2 for IT3708: Sub-symbolic
+methods in AI. For this assignment, we should extend the EA frameworks we created
+for the course's first assignment, to evolve configurations for Izhikevich's
+spiking neuron model~\cite{izhikevich}.
+
+I present my solution in Section~\ref{sec:systemoverview} (Deliverable 1), and
+in a subsection~(Sec.~\ref{sec:mapping}), I discuss the classification of the
+genotype-phenotype mapping used in this assignment (Deliverable 3).  Then, I
+discuss my choices of EA parameter values, and my experimental setup.  in
+Section~\ref{sec:experimentalsetup} (Deliverable 2). Further, I present and
+discuss my results for the 12 test cases in Section~\ref{sec:results}
+(Deliverable 2, continued). I address items 5 and 6 from the assignment text
+in Section~\ref{sec:implications} and Section~\ref{sec:extensions}. (As is
+evident, I present each deliverable quite out of order from the assignment
+text. But they are all present.)
+
+\section{System overview}
+\tightit \label{sec:systemoverview}
+
+I implemented the system within the Python framework I created for the first
+homework assignment in the course, adding classes for problem-specific (i)
+phenotype representation, (ii) fitness evaluation, and (iii) phenotype
+development. For efficiency \footnote{I originally planned to use
+meta-evolution to estimate EA parameters.}, I implemented my simulation of the
+Izhikevich model -- and the SDMs -- in an optimised C++ program, which is
+called from the Python code as the GA runs.
+Further, I implemented a JavaScript-based front end to the simulation
+procedures, to get an interface for intuitive experimentation with the
+Izhikevich model.\footnote{This front end can be tested at
+\url{http://folk.ntnu.no/edvardkk/izhikevich_sandbox/}.}
+%During experimentation, I added real-valued vectors as a genotype choice for
+%my framework, and genetic operators suitable for real-valued genotypes.
+
+\subsection{Representation, phenotype development, and variation operators}
+I experimented with two alternative setups.
+
+First, I tested a continuous-domain solution: For
+genotypes, I used five-component real vectors with each component constrained
+in $[0, 1]$. I mapped into phenospace by linearly translating each
+component into the permitted range of its corresponding model parameter. For
+crossover, I tested both traditional one-point combination, and interpolation
+of the parents' gene values. Finally, to mutate offspring, I added a random
+number drawn from the Gaussian distribution at $(0, \sigma)$ with set
+probability $p_m$, and subsequently clamped the result back to $[0, 1]$ when
+necessary. 
+My initial experiments using continuous-valued representation were
+promising, but I found it very hard to find a suitable choice for $\sigma$\footnote{As
+is intuitively easy to understand, a large $\sigma$ is helpful in the starting
+phase of evolution, to effectively move in the search space, while a much
+smaller $\sigma$ might be essential for effective exploitation near an optimum
+in late iterations.}, and finally chose to abandon this approach.
+%suspect that with an intelligent way to control $\sigma$ dynamically, this
+%continuous-valued representation could be ideal for this problem.
+
+Second, I tested bit vector genotypes, and finally I settled with the following
+configuration: I interpret each sequence of $K=12$ bits of a $5K=60$-bit vector
+as its integer value using standard binary coding, and further normalise it
+into the $[0, 1]$ range and apply the translation into phenospace described for
+real-valued genotypes.  To determine $K$, I tested various values using
+\emph{very} large population sizes, and found that with $K=12$, precision was
+high enough to code the global optimums.  For variation, I use two-point
+crossover, and stochastic per-bit flipping.  \footnote{Doing this write up, I
+have realised that I have a minor off-by-one bug in my binary-to-floating-point
+mapper that has cut off the top $2.44 * 10^{-4}$ of each parameter's range
+(with my choice $K=12$). It seems however that this minimal restriction of the
+ranges has not had any practical consequences for my experiments.}
+
+The problem text calls for text and diagrams, and I hope my ascii art
+satisfies the last requirement: 
+{\scriptsize
+\begin{verbatim}
+          [GENOTYPE: Bit vectors of length 12*5]
+                        V
+         <DEVELOPMENT METHOD: (i) Binary encoding,          
+          (ii) scaling into parameter domains.>             
+                        V
+        [PHENOTYPE: 5-element real vectors, specialised]
+        [with "potential" and "spike train" properties.]
+                        V
+   <             FITNESS EVALUATION                        >
+   < Spike time, - interval, and waveform distance metrics >
+                        V
+            <     ADULT SELECTION           >   >>>>>   <     PARENT SELECTION           >
+            < Over-production + elite sieve >   >>>>>   <  Roulette wheel w/rank scaling >
+                                                                     V
+                                                        <        REPRODUCTION                 >
+                                                        <  Two-point x-over, per-bit mutation >
+\end{verbatim}
+}
+
+\subsection{Classifying the genotype-phenotype mapping}
+\tightit \label{sec:mapping}
+%\begin{tightquote}
+%    \footnotesize
+%    \emph{Based on what you've learned about the different representational
+%    forms in this course, how would you classify the genotype-phenotype
+%    mapping in this exercise? Explain.  }
+%\end{tightquote}
+The development method is \emph{generative}, since the genes code parameters
+for a development method.  
+
+Although a bit off-question, let's also consider the
+genotype classification.  The genotype I use is \emph{fixed-length linear}
+(`[...] individuals that consist of fixed-length vectors of genes'
+\cite{dejong}), and \emph{data oriented} (the gene data does not
+\emph{directly} encode program statements or expressions). 
+
+\subsection{Fitness evaluation}
+Because the SDMs grow smaller as similarity improves, one
+needs a transformation step to adapt then to our frameworks' selection
+mechanisms, which are designed for maximization problems. One possibility is
+to negate the fitness values, and then add a constant factor to all, so as to
+make them non-negative (non-negative fitness values is an unstated requirement
+for many selection mechanisms). De Jong~\cite{dejong} gives the
+formula
+$
+\emph{fitness}(x, y) = \emph{optimality}(x) + \emph{pop\_min}(t)
+$
+where $\emph{pop\_min}(t)$ is the negation of the minimal fitness value at
+time $t$, or alternatively, the minimum seen during the last $g$ iterations,
+giving a `smoothened' transformation. 
+Another possibility is taking the fitness value of some parameter configuration
+with spike distance $\delta$ as $-a/\max(c, \delta)^b$, for some
+well-selected constants $a$, $b$, and $c$. 
+
+I initially used the first kind of transformation, taking \emph{pop\_min} from
+the last $g=5$ iterations, but, because I settled on using tournament or rank
+selection in my experiments with selection mechanisms (which I will discuss in
+the next section), I realised that I could simply use the negations of the raw
+fitness values, since tournament and rank selection clearly cares only about
+\emph{rank} between fitness values. Thus, to transform the distance metric
+values to suitable fitness values, I only negate them. 
+
+\section{GA configuration and experimental setup}
+\tightit \label{sec:experimentalsetup}
+Configuring an EA for a challenging problem is a daunting task: There are many
+`categorical' (`which?') and quantitative alternatives for selection
+protocols, selection mechanisms, and genetic operations, and the effects of
+each choice are often complex and non-linear. Further, EA experiments have a
+great degree of stochasticity -- the state of the RNG may result in a rare
+very bad (good) run even with very strong (bad) parameters.  Because of this
+difficulty of tuning, EA researchers have put some effort in investigating
+automatic configuration techniques~\cite{autoparam}.  I originally planned to
+use Greffenstette's Meta-EA approach~\cite{metaea} for this
+assignment, but because
+implementing the code for the main neuron model and the distance metrics took
+longer time than I expected, I started to fear that I did not have
+enough time, and chose instead to follow the traditional route and sit for (far
+too many) days trying to tune the GA by hand.
+
+Izhikevich's model is very complex, and my impression is that the
+parameter space is highly `deceptive': GA search is often lead into promising
+sub-spaces that can approximate a solution to some degree, but that in reality
+lays far from the sub-space containing a global optimum. Because of this, I
+reasoned that, while I needed some selection pressure to promote exploitation
+of promising areas, I should also let (possibly \emph{much}) less-fit
+individuals search alternative areas without immediately being
+thrown out. I found a working configuration by combining (i) over-production,
+(ii) allowing a small amount of adults to survive in an elitist sieve, and
+(iii) using a rank-based selection mechanism\footnote{Which also gives very
+low-fit individuals a fair chance of mating.}.
+
+To determine crossover and mutation rates I executed 20
+random runs using $3*4=12$ `suitable' choices for each of the 12 test cases.
+The results of this test run can be seen in Appendix~\ref{app:ratetest}.
+Analysing the results, I found that, while some configurations were clearly
+bad for \emph{some} problems, there were no definitive optimal configurations
+for each problem type. I finally decided to go with $p_c = 0.6$ and $p_m =
+0.05$ as these seemed to be reasonable compromises, and later on decided to
+increase the mutation probability to $0.06$. 
+
+My final configuration is as follows:
+
+\begin{quote}
+{\footnotesize
+\vspace{-3pt}
+\begin{description}
+  \item[Adult selection strategy:] 
+      Over-production, allowing 100 individuals
+      to reach adulthood. Two sieves are combined: (i) one elitism sieve
+      selects the 10 most fit individuals from the previous population, and
+      (ii) one sieve selects the 90 most fit of the newly produced children.
+      As an extra measure to prevent premature convergence to a local optimum,
+      only one copy of a phenotype is allowed to reach adulthood.
+  \item[Parent selection strategy:] 
+      Roulette wheel selection of 170
+      individuals from the full adult pool using rank scaling with $\emph{min}
+      = 0.5$ and $\emph{max} = 1.8$.
+  \item[Crossover operator:] Two-point crossover at random cut points. 
+  \item[Crossover probability:] $0.6$.
+  \item[Mutation operator:] Stochastic bit flipping. (The traditional version,
+      with no knowledge of `phenotype' boundaries.) 
+  \item[Mutation probability:] $0.06$ per bit.
+  \item[Stopping criteria:] The evolutionary loop runs for 300 iterations.
+\end{description}
+}
+\end{quote}
+
+For my experiments I ran each of the 12 problem configurations five times with
+different RNG seeds. I recorded the final model parameters found in each of
+these 60 runs. Further, for the run in each group of five giving the most fit
+individual, I plotted the means, maximums, and standard deviations at each
+iteration of the run, and the best-fit individuals spike train.
+
+Also, for each problem configuration I computed the maximum `normalised'
+phenospace distance among the configuration's five solutions, to investigate
+the (non)similarity among near-optimal solutions . More precisely: Given two
+phenotypes with parameter vectors \vvec{a} and \vvec{b}, I scaled each
+component back into $[0, 1]$ and computed the distance between the resulting
+`normalised' parameter vectors. This metric ranges from 0 for solutions that
+are equal, to $\sqrt{1+1+1+1+1} = \sqrt{5}$ for solutions that lay at different
+outer borders of the phenospace. The metric, which I have denoted as
+\emph{diameter}, gives an indication of the variation in the solution space. 
+
+
+\section{Results and discussion}
+\tightit \label{sec:results}
+
+In this section I present and quickly discuss the results of the five runs for
+each of the twelve test cases.
+
+At first look, the quite extreme differences in fitness seen in the plots
+might seem a bit strange. But, since I use rank based scaling, the results
+are of course exactly the same as if all fitness values were divided by a
+billion. However, the `extreme' fitness values creates a bit trouble for
+visualisation and I have therefore plotted maximum fitness using a second, much
+narrower axis (right $y$ axis).
+
+\subsection{Spike time}
+\tightit
+
+\subsubsection{Reference train 1}
+\tightit
+The most-fit individuals achieve a near-perfect match with the reference
+train.\footnote{Note that in the 20-run crossover/mutation-rate experiments shown in
+the appendix, this case is seen to be solved to a global optimum for several
+configurations.} The fitness plots for run \#1 shows that the initial move
+towards feasible parameter space happens already around iteration 15, and that
+subsequently a \emph{much} larger computational effort is spent gradually
+improving the solution in very small steps. This pattern is common for most of
+the twelve test cases.
+
+That standard deviation and mean fitness does not change significantly after
+the initial search phase, may be explained by the great differences in fitness
+scores (the low-fitness individuals will dominate the calculations, and
+completely hide significant fitness gain in the elitist group), and because of
+the `loose' GA configuration I discussed in
+Section~\ref{sec:experimentalsetup}. Even though it may seem `wasteful', I
+found that having this chaotic configuration which allowed a great deal of
+development among lesser-fit individuals was the surest way to consistently
+increase maximum fitness towards a very strong point in phenospace.
+
+
+\casedata{../data/izzy-train1.dat_spike-time_2.png}
+         {../data/izzy-train1.dat_spike-time_2.dev.png}
+         {
+1 & 0.008 & 0.142 & -47.957 & 1.968 & 0.041 &\textbf{-0.490} \\ \hline
+2 & 0.010 & 0.173 & -50.227 & 1.478 & 0.041 &\textbf{-1.058} \\ \hline
+3 & 0.034 & 0.050 & -48.677 & 1.799 & 0.041 &\textbf{-1.114} \\ \hline
+4 & 0.023 & 0.254 & -48.250 & 2.848 & 0.039 &\textbf{-1.929} \\ \hline
+5 & 0.050 & 0.059 & -44.343 & 3.450 & 0.041 &\textbf{-2.375} \\ \hline
+        }
+        {0.7111}
+
+
+
+\subsubsection{Reference train 2}
+\tightit
+The GA finds an almost-perfect match using this distance metric (though, cf.
+the Appendix, finding a global optimum seems to be hard). The
+character of development is the same as for reference train 1. 
+
+\casedata{../data/izzy-train2.dat_spike-time_1.png}
+         {../data/izzy-train2.dat_spike-time_1.dev.png}
+         {
+1 & 0.024 & 0.224 & -49.702 & 4.076 & 0.045 &\textbf{-0.258} \\ \hline
+2 & 0.037 & 0.058 & -49.189 & 4.081 & 0.045 &\textbf{-0.432} \\ \hline
+3 & 0.027 & 0.194 & -48.970 & 5.065 & 0.046 &\textbf{-1.202} \\ \hline
+4 & 0.037 & 0.016 & -45.381 & 7.307 & 0.049 &\textbf{-3.393} \\ \hline
+5 & 0.030 & 0.226 & -54.878 & 8.419 & 0.050 &\textbf{-4.174} \\ \hline
+         }
+         {0.7948}
+
+
+
+
+\subsubsection{Reference train 3}
+\tightit
+The GA finds an almost-perfect match using this distance metric. The character
+of development is the same as for the previous reference trains.
+
+\casedata{../data/izzy-train3.dat_spike-time_2.png}
+         {../data/izzy-train3.dat_spike-time_2.dev.png}
+         {
+1 & 0.044 & 0.246 & -39.363 & 5.357 & 0.040 &\textbf{-0.382} \\ \hline
+2 & 0.050 & 0.248 & -36.226 & 6.916 & 0.039 &\textbf{-1.372} \\ \hline
+3 & 0.063 & 0.195 & -34.541 & 7.685 & 0.040 &\textbf{-1.516} \\ \hline
+4 & 0.048 & 0.117 & -45.686 & 2.575 & 0.041 &\textbf{-2.611} \\ \hline
+5 & 0.097 & 0.074 & -34.504 & 7.612 & 0.041 &\textbf{-3.263} \\ \hline
+         }
+         {0.6975}
+
+
+\subsubsection{Reference train 4}
+\tightit
+The GA finds a perfect match using this distance metric. My impression is that
+this is by far the `easiest' reference train to evolve towards (this is also
+evident in the appendix). The perfect match is found around generation 100,
+after which no useful computation happens. Though, we observe again that the
+solution does not take over the population, and that there still is activity
+among lesser-fit individuals.
+
+\casedata{../data/izzy-train4.dat_spike-time_2.png}
+         {../data/izzy-train4.dat_spike-time_2.dev.png}
+         {
+1 & 0.003 & 0.016 & -58.821 & 9.869 & 0.079 &\textbf{-0.000} \\ \hline
+2 & 0.003 & 0.202 & -62.117 & 9.833 & 0.079 &\textbf{-0.100} \\ \hline
+3 & 0.003 & 0.276 & -53.022 & 9.384 & 0.076 &\textbf{-0.173} \\ \hline
+4 & 0.003 & 0.209 & -46.443 & 8.047 & 0.068 &\textbf{-0.200} \\ \hline
+5 & 0.003 & 0.080 & -46.650 & 8.356 & 0.070 &\textbf{-0.224} \\ \hline
+         }
+         {0.9031}
+
+
+\subsection{Spike Interval}
+\tightit
+Analysing the spike interval results, it is important to remember that the
+measure does not care about the locations of spike points, but only the
+distances between them. Therefore, we often observe `shifted' solutions, that
+could be `pushed into place' to match up with the reference trains.
+
+\subsubsection{Reference train 1}
+\tightit
+The plot of the best individual is skewed all the way to the left, but the
+interval distances clearly match almost perfectly. It seems that, even though
+the trains start at different time steps, evolution has found the same
+spike-section `shape' as in the reference train. Note that in the best run
+initial development is very rapid; a solution in the $[-10, -5]$ range is
+found already around the fifth iteration(!)\footnote{Observing the GA as it
+runs, this is the point where `the correct shape' has been found.}, and the
+best solution appears around iteration 50.
+
+\casedata{../data/izzy-train1.dat_spike-interval_3.png}
+         {../data/izzy-train1.dat_spike-interval_3.dev.png}
+         {
+1 & 0.001 & 0.036 & -77.522 & 8.173 & 0.056 &\textbf{-0.447} \\ \hline
+2 & 0.001 & 0.074 & -79.133 & 8.313 & 0.056 &\textbf{-0.490} \\ \hline
+3 & 0.003 & 0.061 & -48.726 & 2.983 & 0.045 &\textbf{-0.693} \\ \hline
+4 & 0.001 & 0.022 & -77.729 & 8.666 & 0.057 &\textbf{-0.721} \\ \hline
+5 & 0.001 & 0.012 & -79.695 & 8.651 & 0.057 &\textbf{-0.721} \\ \hline
+         }
+         {0.8604}
+
+
+\subsubsection{Reference train 2}
+\tightit
+Also here, the plot of the best individual is left-skewed, and we observe that
+if it was shifted right, it would match up quite good with the reference
+train. Convergence is rapid.
+
+
+\casedata{../data/izzy-train2.dat_spike-interval_2.png}
+         {../data/izzy-train2.dat_spike-interval_2.dev.png}
+         {
+1 & 0.033 & 0.091 & -47.639 & 5.512 & 0.047 &\textbf{-0.521} \\ \hline
+2 & 0.025 & 0.246 & -46.479 & 6.317 & 0.048 &\textbf{-0.742} \\ \hline
+3 & 0.026 & 0.281 & -42.512 & 8.460 & 0.051 &\textbf{-1.137} \\ \hline
+4 & 0.024 & 0.259 & -37.227 & 9.995 & 0.056 &\textbf{-3.203} \\ \hline
+5 & 0.129 & 0.012 & -47.749 & 7.160 & 0.044 &\textbf{-4.160} \\ \hline
+         }
+         {1.0715}
+
+
+\subsubsection{Reference train 3}
+\tightit
+The plot of the best individual is somewhat left-skewed, but it matches up
+nicely with the reference plot (even the potential `shape' looks correct).
+Here, fitness development moves significantly slower. From experiments, I have
+seen that the GA often struggles with finding the parameter subspace with `two
+small groups of spikes'. In the best-run plot, this `spike train type' is
+found around iteration 60, and from there it uses about 60-70 additional
+iterations to find the best solution.
+
+\casedata{../data/izzy-train3.dat_spike-interval_4.png}
+         {../data/izzy-train3.dat_spike-interval_4.dev.png}
+         {
+1 & 0.025 & 0.296 & -40.596 & 4.284 & 0.041 &\textbf{-0.186} \\ \hline
+2 & 0.074 & 0.142 & -37.544 & 6.176 & 0.040 &\textbf{-0.204} \\ \hline
+3 & 0.051 & 0.155 & -36.030 & 6.331 & 0.041 &\textbf{-0.433} \\ \hline
+4 & 0.040 & 0.254 & -34.089 & 7.307 & 0.041 &\textbf{-0.661} \\ \hline
+5 & 0.048 & 0.151 & -35.359 & 6.522 & 0.041 &\textbf{-0.821} \\ \hline
+         }
+         {0.6182}
+
+\clearpage
+
+\subsubsection{Reference train 4}
+\tightit
+As for the spike time metric, the GA solves this problem configuration
+perfectly. Interestingly, the optimal solution is not the same as for the
+spike time metric, even though the two spike trains look exactly similar (at
+least I can not see any visible difference\ldots). 
+
+\casedata{../data/izzy-train4.dat_spike-interval_4.png}
+         {../data/izzy-train4.dat_spike-interval_4.dev.png}
+         {
+1 & 0.003 & 0.249 & -66.011 & 9.942 & 0.080 &\textbf{-0.000} \\ \hline
+2 & 0.003 & 0.211 & -59.407 & 9.773 & 0.078 &\textbf{-0.000} \\ \hline
+3 & 0.003 & 0.121 & -45.845 & 7.718 & 0.066 &\textbf{-0.100} \\ \hline
+4 & 0.003 & 0.159 & -56.489 & 9.265 & 0.075 &\textbf{-0.141} \\ \hline
+5 & 0.003 & 0.090 & -48.762 & 8.666 & 0.071 &\textbf{-0.200} \\ \hline
+         }
+         {0.6602}
+
+
+\subsection{Waveform}
+\tightit
+The waveform metric is interesting. It does not care more about spikes than
+any other points of the output potentials, so it will often `drop' a few
+spikes to better fit larger parts of a neuron's potential plot. 
+
+\subsubsection{Reference train 1}
+\tightit
+Evolution finds a near perfect match to this reference train. Evolution
+stagnates at around the 155th iteration. Interestingly, the diameter metric is
+significantly smaller for this metric than for the two others, indicating that
+the solution set is `closer'.
+
+\casedata{../data/izzy-train1.dat_waveform_3.png}
+         {../data/izzy-train1.dat_waveform_3.dev.png}
+         {
+1 & 0.016 & 0.118 & -49.116 & 1.792 & 0.041 &\textbf{-0.159} \\ \hline
+2 & 0.074 & 0.050 & -48.835 & 3.419 & 0.041 &\textbf{-0.277} \\ \hline
+3 & 0.022 & 0.141 & -47.993 & 3.087 & 0.040 &\textbf{-0.278} \\ \hline
+4 & 0.086 & 0.078 & -52.205 & 3.370 & 0.040 &\textbf{-0.291} \\ \hline
+5 & 0.037 & 0.075 & -55.012 & 5.782 & 0.041 &\textbf{-0.336} \\ \hline
+         }
+         {0.4591}
+
+
+\subsubsection{Reference train 2}
+\tightit
+Using the waveform metric it is very hard to get a one-to-one match for this
+reference train (although I have seen it in rare test runs). 
+
+\casedata{../data/izzy-train2.dat_waveform_4.png}
+         {../data/izzy-train2.dat_waveform_4.dev.png}
+         {
+1 & 0.012 & 0.063 & -48.750 & 6.993 & 0.054 &\textbf{-0.427} \\ \hline
+2 & 0.010 & 0.271 & -56.685 & 8.576 & 0.057 &\textbf{-0.428} \\ \hline
+3 & 0.005 & 0.085 & -73.335 & 8.765 & 0.060 &\textbf{-0.453} \\ \hline
+4 & 0.003 & 0.204 & -69.001 & 8.369 & 0.059 &\textbf{-0.459} \\ \hline
+5 & 0.001 & 0.234 & -73.738 & 8.550 & 0.060 &\textbf{-0.471} \\ \hline
+         }
+         {0.7924}
+
+
+
+\subsubsection{Reference train 3}
+\tightit
+Also here, the waveform metric has problems finding a very close match.
+
+\casedata{../data/izzy-train3.dat_waveform_3.png}
+         {../data/izzy-train3.dat_waveform_3.dev.png}
+         {
+1 & 0.061 & 0.144 & -41.499 & 6.633 & 0.040 &\textbf{-0.343} \\ \hline
+2 & 0.054 & 0.134 & -44.478 & 4.726 & 0.040 &\textbf{-0.365} \\ \hline
+3 & 0.057 & 0.253 & -33.809 & 7.071 & 0.039 &\textbf{-0.385} \\ \hline
+4 & 0.104 & 0.048 & -42.512 & 5.582 & 0.041 &\textbf{-0.409} \\ \hline
+5 & 0.023 & 0.188 & -45.540 & 4.219 & 0.041 &\textbf{-0.411} \\ \hline
+         }
+         {0.7807}
+
+
+\subsubsection{Reference train 4}
+\tightit
+As noted earlier, reference train 4 seems to be the `easiest' and also with
+the waveform metric, the GA manages to find a near-perfect match. 
+
+\casedata{../data/izzy-train4.dat_waveform_2.png}
+         {../data/izzy-train4.dat_waveform_2.dev.png}
+         {
+1 & 0.001 & 0.152 & -64.766 & 9.524 & 0.078 &\textbf{-0.169} \\ \hline
+2 & 0.003 & 0.069 & -60.359 & 9.961 & 0.080 &\textbf{-0.169} \\ \hline
+3 & 0.001 & 0.120 & -61.250 & 9.338 & 0.077 &\textbf{-0.173} \\ \hline
+4 & 0.001 & 0.216 & -55.000 & 9.094 & 0.075 &\textbf{-0.187} \\ \hline
+5 & 0.001 & 0.295 & -59.358 & 9.125 & 0.076 &\textbf{-0.200} \\ \hline
+         }
+         {0.7835}
+
+
+\section{Practical implications}
+\tightit \label{sec:implications}
+%\begin{tightquote}
+%    \footnotesize
+%    \emph{Discuss the practical implications of the tool that you have built.
+%    How might a computational neuroscientist use it?  }
+%\end{tightquote}
+%\noindent
+Given a list of potential values, expressing a spike train recorded from, say,
+a human or another animal, my system can effectively search for close-matching
+configurations of Izhikevich's model (if such exist), with respect to three
+different distance metrics.
+After fitting a suitable model of some real-world spike train, a computational
+neuroscientist can run large scale simulations (for example using a vast array
+of spiking neurons in a network), or run automatic tools to investigate how
+the behaviour of the observed neuron correspond to other neurons (cf.
+Section~3 of the assignment text).
+
+Thus, I will primarily say that my system can assist computational
+neuroscientists with intelligently transforming `raw' data (for instance, from
+a dataset) into a suitable model domain for further experimentation.
+
+\section{Extending the tool}
+\tightit \label{sec:extensions}
+To ponder about possible extensions, it is helpful to generalise and ask what
+our program really does: In abstract terms, we finding constant parameters for
+a function (in our case given by a set of update equations) so that its output
+fits a given data set (with respect to some distance metric). One idea wrap the
+GA in a program that gives the user control over all these aspects:
+{ \footnotesize
+\begin{description}
+    \item[Function] The user could input the function/system equations to
+        tune, in a `human-readable' form similar to the one used at
+        Wolfram$|$Alpha\footnote{\url{http://www.wolframalpha.com/}}. (Or
+        alternatively, in a tiny LISP-style language. Though, that could
+        require more proficiency from the users.) 
+    \item[Variables] The user would choose which variables from the update
+        equations that should be optimised through evolution, and which
+        variables that should either be held constant, or be specified in
+        another way (such as a time variable). For the variables to be
+        included in the search space, the user would have to specify each
+        variable's domain.
+    \item[Distance metric] The program could come with a wide range of
+        general-purpose distance metrics, such as the waveform DSM we used in
+        this assignment. Ideally, the program should include a variety of DSMs
+        that was suitable for the great majority of problems; but, in
+        addition, users could have the option of adding custom distance
+        metrics by writing tiny extension snippets in a suitable DSL.
+\end{description}
+}
+In addition, there should be a mechanism allowing the user to control GA
+parameters (although, sensible defaults would also be useful).  I have made an
+attempt at illustrating the model component of such a program with the
+following ascii art.
+{ \scriptsize
+\begin{verbatim}
+[Generic GENOTYPE, MK-length bit vector             ]
+[for M variables to be optimised, and K bits per var]
+           |
+<Development method translating into >       [DISTANCE METRIC         ]
+<the user specified variable domains.>       [(Either system-provided ]
+           |                                 [ or programmed by user) ]
+           V                                          |
+[PHENOTYPE corresponding to     ]                     V
+[fn/system vars to be optimised ]     --->   <Fitness function>
+                                                 ^     ^
+                                   /-------------|     |
+                   [REFERENCE DATA SET  ]    [FUNCTION TO BE FITTED,
+                   [to be fitted against]    [provided by user       ]
+\end{verbatim}
+}
+Another important part is that the program should include the live plotting
+routines. Seeing the graph being fitted seems to often be just as interesting
+and helpful as inspecting the final result!
+
+One (somewhat contrived) example use case would be a simple physics
+experiment: A student could record the displacement of, say, some projectile
+being shot against a rugged surface, and then use the system to fit various
+displacement formulas (for instance, with various models of friction) against
+the recorded trail. 
+
+\bibliographystyle{abbrv}   
+\bibliography{refs}
+
+
+\appendix
+\tightit \label{app:ratetest}
+
+\section{Experimental results for crossover and mutation rates}
+
+\input{rate_anal}
+
+
+
+
+\end{document}

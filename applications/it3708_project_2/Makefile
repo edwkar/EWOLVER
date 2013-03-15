@@ -1,7 +1,7 @@
 #CXX=clang++
 #CXXFLAGS=-std=c++0x -O3 -Wall
 CXX=g++
-CXXFLAGS=-std=c++0x -O2 -Wall -march-native -fomit-frame-pointer
+CXXFLAGS=-std=c++0x -O2 -Wall -march=native -mtune=native -fomit-frame-pointer
 
 EMCC=emcc
 EMCCFLAGS=-O2 
@@ -27,4 +27,4 @@ $(TARGET): test_neurons.cc izhikevich.cc
 
 .PHONY: clean
 clean: 
-	rm -fr $(TARGET) $(SANDBOX_TARGET) *.o *.pyc __pycache__
+	rm -fr $(TARGET) $(SANDBOX_TARGET) *.aux *.bbl *.log *.o *.pyc __pycache__

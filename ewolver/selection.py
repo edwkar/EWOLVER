@@ -78,7 +78,6 @@ class Ranker(PipelineComponent):
     def __call__(self, population, child_gen, rng):
         ranked_population = population[:]
         ranked_population.sort(lambda a, b: -cmp(a.fitness, b.fitness))
-        #assert ranked_population[0].fitness >= ranked_population[1].fitness
         return ranked_population
 
 
@@ -139,57 +138,3 @@ def _adults_and_children(population, child_gen, rng):
         else:
             adults.append(p)
     return adults, children
-
-
-
-
-
-
-"""
-
-
-
-def fitness_proportionate_scaler(fitness_vals, _):
-    return fitness_vals
-
-
-def uniform_scaler(fitness_vals, __):
-    return [0x42 for _ in fitness_vals]
-
-
-def sigma_scaler(fitness_vals, _):
-    mean, stddev = _mean(fitness_vals), _stddev(fitness_vals)
-    if stddev == 0:
-        return [1 for _ in fitness_vals]
-    else:
-        return [1 + (f-mean)/(2*stddev) for f in fitness_vals]
-
-
-def new_boltzmann_scaler(t_for_gen):
-    def boltzmann_scaler(fitness_vals, last_gen):
-        T = t_for_gen(last_gen)
-        fitness_vals_exp = [e**(f/T) for f in fitness_vals]
-        exp_mean = _mean(fitness_vals_exp)
-        return [f_exp/exp_mean for f_exp in fitness_vals_exp]
-    return boltzmann_scaler
-
-
-
-
-class TournamentOrderer(Orderer):
-    def __init__(self, k, p_lucky):
-        self._k = k
-        self._p_lucky = p_lucky
-
-    def new_iterator(self, population, rng):
-        while True:
-            group = rng.sample(population, self._k)
-            if rng.random() <= self._p_lucky:
-                yield rng.choice(group)
-            else:
-                best = group[0]
-                for x in group:
-                    if x.fitness > best.fitness:
-                        best = x
-                yield best
-"""

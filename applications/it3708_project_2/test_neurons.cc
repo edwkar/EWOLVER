@@ -7,12 +7,12 @@ using namespace std;
 
 void describe(const Neuron& n) {
     auto pots = n.potentials();
-    for (int i = 0; i < pots.size(); ++i)
+    for (unsigned int i = 0; i < pots.size(); ++i)
         printf("%lf ", pots[i]);
     putchar('\n');
 
     auto st = n.spikeTimes();
-    for (int i = 0; i < st.size(); ++i)
+    for (unsigned int i = 0; i < st.size(); ++i)
         printf("%d ", st[i]);
     putchar('\n');
 }

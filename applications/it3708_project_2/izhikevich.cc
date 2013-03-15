@@ -37,7 +37,6 @@ v_pot_t Neuron::potsFromParams(double a, double b, double c, double d, double k)
         v += dv;
         u += du;
         res.push_back(min(Config->actThreshold, v));
-        //res.push_back(v);
         if (v > Config->actThreshold) {
             v = c;
             u = u+d;
@@ -54,17 +53,19 @@ v_pot_t Neuron::potsFromFile(const string& path) {
     FILE *f;
     if ((f = fopen(path.c_str(), "r")) == NULL)
         throw runtime_error("fopen");
+
     for (int num_read = 0; num_read <= Config->timespan; ++num_read) {
         double v;
         if (fscanf(f, "%lf", &v) != 1)
             throw runtime_error("potentials_from_file, fscanf");
         res.push_back(v);
     }
+
     int foo;
     if (fscanf(f, "%d", &foo) != EOF)
         throw runtime_error("file length did not match expectation");
-    fclose(f);
 
+    fclose(f);
     return res;
 }
 
@@ -74,6 +75,7 @@ v_st_t Neuron::spikeTimesFromPots(const v_pot_t &pot) {
     for (int t = 0; t < Config->timespan; ++t)
         if (pot[t] >= Config->actThreshold)
             res.push_back(t);
+
     return res;
 }
 
@@ -83,6 +85,7 @@ static double spikeCountPenalty(const Neuron& a, const Neuron& b) {
         n = max(numA, numB),
         m = min(numA, numB),
         l = Config->timespan;
+
     return (n-m)*l / max(1.0, 2.0*m);
 }
 
@@ -121,7 +124,5 @@ const {
     double accum = 0;
     for (int i = 0; i < Config->timespan; ++i)
         accum += abs(pow(a[i]-b[i], Config->p));
-
-    return accum / Config->timespan;
-    //return (pow(accum, 1.0/Config->p)) / Config->timespan;
+    return (pow(accum, 1.0/Config->p)) / Config->timespan;
 }

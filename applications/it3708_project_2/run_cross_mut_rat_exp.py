@@ -12,6 +12,7 @@ def run_rate_test_experiment():
 
     all_res_str = ''
 
+    # Heh, heh. Now comes something pleasing to your eyes.
     for crossover_rate in [0.6, 0.7, 0.8]:
         for mutation_rate in [0.02, 0.03, 0.05, 0.1]:
             for ref_file_id in [1, 2, 3, 4]:
