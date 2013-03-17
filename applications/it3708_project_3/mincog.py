@@ -27,6 +27,7 @@ class ContinuousTimeRNN(object):
         self._time_constants = time_constants
         self._y = [0 for _ in range(self._num_neurons)]
         self._o = [0 for _ in range(self._num_neurons)]
+        self._has_updated = False
 
     def update(self, inputs):
         w = self._weights
@@ -38,7 +39,7 @@ class ContinuousTimeRNN(object):
         neuron_ids = range(self._num_neurons)
 
         def s_i(i):
-            return sum(o_j * w[i][j] + I[i]
+            return sum(self._o[j] * w[i][j] + I[i]
                        for j in range(self._num_neurons))
         s = map(s_i, neuron_ids)
 
@@ -52,8 +53,12 @@ class ContinuousTimeRNN(object):
         self._o = map(o_i, neuron_ids)
         self._y = [y_i + dy[i] for i in neuron_ids]
 
+        self._has_updated = True
+
     def output(self, neuron_id):
         return self._o[neuron_id]
+
+    has_updated = property(lambda self: self._has_updated)
 
     @staticmethod
     def factory_for_single_hidden_layer(num_inputs, num_hiddens, num_outputs):
@@ -110,7 +115,15 @@ class ContinuousTimeRNN(object):
         return create
 
 
+class TestCase(object):
+    def __init__(self, world_width, world_height, paddle_width, paddle_pos):
+        self._world_width = world_width
+        self._world_height = world_height
+        self._paddle_width = paddle_width
+        self._paddle_pos = paddle_pos
+
+    def test(self, neuron):
 
 
-
+def setup_ea(num_inputs, num_hiddens, num_outputs):
 
